@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════
-   Landing Page — Cinematic Neon Hero
+   Landing Page
    ════════════════════════════════════════ */
 
 .landing {
@@ -16,51 +16,6 @@
   z-index: 1;
 }
 
-/* ── Animated Grid Floor ── */
-.landing::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: -50%;
-  right: -50%;
-  height: 50%;
-  background-image:
-    linear-gradient(rgba(134, 59, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(134, 59, 255, 0.08) 1px, transparent 1px);
-  background-size: 80px 80px;
-  transform: perspective(500px) rotateX(60deg);
-  transform-origin: bottom center;
-  mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);
-  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);
-  animation: gridScroll 20s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes gridScroll {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 80px; }
-}
-
-/* ── Radial Glow ── */
-.landing::after {
-  content: '';
-  position: absolute;
-  top: 20%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 800px;
-  height: 800px;
-  background: radial-gradient(circle, rgba(134, 59, 255, 0.1) 0%, rgba(71, 191, 255, 0.05) 40%, transparent 70%);
-  filter: blur(60px);
-  pointer-events: none;
-  animation: pulseGlow 6s ease-in-out infinite alternate;
-}
-
-@keyframes pulseGlow {
-  0% { opacity: 0.7; transform: translateX(-50%) scale(1); }
-  100% { opacity: 1; transform: translateX(-50%) scale(1.15); }
-}
-
 /* ── Hero Content ── */
 .hero {
   position: relative;
@@ -72,50 +27,17 @@
 }
 
 .hero-img {
-  width: 140px;
-  height: 140px;
+  width: 120px;
+  height: 120px;
   object-fit: cover;
   border-radius: 50%;
-  border: 3px solid rgba(134, 59, 255, 0.3);
-  box-shadow:
-    0 0 30px rgba(134, 59, 255, 0.3),
-    0 0 60px rgba(134, 59, 255, 0.15),
-    0 0 100px rgba(134, 59, 255, 0.05);
-  animation: heroFloat 4s ease-in-out infinite;
+  border: 2px solid var(--border);
   position: relative;
 }
 
-/* Spinning ring around hero image */
 .hero-img-wrapper {
   position: relative;
   display: inline-block;
-}
-
-.hero-img-wrapper::before {
-  content: '';
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  border-top-color: var(--accent);
-  border-right-color: var(--cyan);
-  animation: rotateGlow 4s linear infinite;
-}
-
-.hero-img-wrapper::after {
-  content: '';
-  position: absolute;
-  inset: -16px;
-  border-radius: 50%;
-  border: 1px solid transparent;
-  border-bottom-color: rgba(134, 59, 255, 0.3);
-  border-left-color: rgba(71, 191, 255, 0.2);
-  animation: rotateGlow 6s linear infinite reverse;
-}
-
-@keyframes heroFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
 }
 
 .landing h1,
@@ -130,12 +52,7 @@
   margin: 20px 0 8px;
   letter-spacing: -2px;
   line-height: 1.1;
-  background: linear-gradient(135deg, #ffffff 0%, var(--accent-bright) 40%, var(--cyan) 70%, var(--neon-purple) 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: textShimmer 6s linear infinite;
+  color: #fff;
 }
 
 .hero p {
@@ -169,20 +86,17 @@
 .landing .btn:not(.primary) {
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(12px);
   color: #fff;
 }
 
 .landing .btn:not(.primary):hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(134, 59, 255, 0.3);
-  box-shadow: 0 0 20px rgba(134, 59, 255, 0.1);
 }
 
 .landing .btn.primary {
   background: linear-gradient(135deg, var(--accent), var(--cyan));
   border: none;
-  box-shadow: 0 0 30px rgba(134, 59, 255, 0.35), 0 0 60px rgba(134, 59, 255, 0.1);
   color: #fff;
   font-weight: 700;
   font-size: 16px;
@@ -190,11 +104,10 @@
 }
 
 .landing .btn.primary:hover {
-  box-shadow: 0 0 40px rgba(134, 59, 255, 0.5), 0 0 80px rgba(134, 59, 255, 0.2);
-  transform: translateY(-2px);
+  opacity: 0.9;
 }
 
-/* ── Feature Cards (bottom section) ── */
+/* ── Feature Cards ── */
 .features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -207,36 +120,15 @@
 }
 
 .feature-card {
-  background: rgba(18, 18, 35, 0.6);
-  backdrop-filter: blur(16px);
+  background: var(--card-solid);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 28px;
-  transition: all 0.3s var(--ease-out);
-  position: relative;
-  overflow: hidden;
-}
-
-.feature-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--cyan), var(--accent));
-  opacity: 0;
-  transition: opacity 0.3s;
+  transition: border-color 0.2s var(--ease-out);
 }
 
 .feature-card:hover {
   border-color: var(--border-glow);
-  box-shadow: var(--glow-md);
-  transform: translateY(-4px);
-}
-
-.feature-card:hover::before {
-  opacity: 1;
 }
 
 .feature-icon {

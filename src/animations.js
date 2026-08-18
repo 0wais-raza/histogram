@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import gsap from "gsap";
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   GSAP ANIMATION GUIDE — Histogram (Neon Cyber Edition)
+   GSAP ANIMATION GUIDE — Histogram
    ══════════════════════════════════════════════════════════════════════════════ */
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -11,24 +11,24 @@ import gsap from "gsap";
 
 export const pageAnimations = {
   landing: [
-    { selector: ".hero-img-wrapper", scale: 0.5, opacity: 0, duration: 1, ease: "back.out(1.7)" },
-    { selector: ".hero h1", y: 40, opacity: 0, duration: 0.9, delay: 0.2, ease: "power3.out" },
-    { selector: ".hero p", y: 30, opacity: 0, duration: 0.8, delay: 0.4, ease: "power3.out" },
-    { selector: ".hero-actions", y: 25, opacity: 0, duration: 0.7, delay: 0.6, ease: "power3.out" },
-    { selector: ".feature-card", y: 50, opacity: 0, duration: 0.6, stagger: 0.12, delay: 0.8, ease: "power3.out" },
+    { selector: ".hero-img-wrapper", opacity: 0, duration: 0.5, ease: "power2.out" },
+    { selector: ".hero h1", y: 20, opacity: 0, duration: 0.4, delay: 0.1, ease: "power2.out" },
+    { selector: ".hero p", y: 15, opacity: 0, duration: 0.4, delay: 0.2, ease: "power2.out" },
+    { selector: ".hero-actions", y: 15, opacity: 0, duration: 0.35, delay: 0.3, ease: "power2.out" },
+    { selector: ".feature-card", y: 20, opacity: 0, duration: 0.35, stagger: 0.06, delay: 0.4, ease: "power2.out" },
   ],
   home: [
-    { selector: ".home-welcome", y: 30, opacity: 0, duration: 0.7, ease: "power3.out" },
-    { selector: ".feed-placeholder", y: 40, opacity: 0, duration: 0.8, delay: 0.2, ease: "power3.out" },
+    { selector: ".home-welcome", y: 15, opacity: 0, duration: 0.4, ease: "power2.out" },
+    { selector: ".feed-placeholder", y: 20, opacity: 0, duration: 0.4, delay: 0.1, ease: "power2.out" },
   ],
   profile: [
-    { selector: ".avatar", scale: 0.6, opacity: 0, duration: 0.7, ease: "back.out(1.7)" },
-    { selector: ".profile-info", x: 30, opacity: 0, duration: 0.6, delay: 0.15, ease: "power3.out" },
-    { selector: ".stat-item", y: 15, opacity: 0, duration: 0.4, stagger: 0.08, delay: 0.3, ease: "power2.out" },
-    { selector: ".grid-item", y: 25, opacity: 0, duration: 0.5, stagger: 0.05, delay: 0.4, ease: "power3.out" },
+    { selector: ".avatar", opacity: 0, duration: 0.4, ease: "power2.out" },
+    { selector: ".profile-info", x: 15, opacity: 0, duration: 0.35, delay: 0.1, ease: "power2.out" },
+    { selector: ".stat-item", y: 10, opacity: 0, duration: 0.3, stagger: 0.05, delay: 0.2, ease: "power2.out" },
+    { selector: ".grid-item", y: 12, opacity: 0, duration: 0.3, stagger: 0.03, delay: 0.25, ease: "power2.out" },
   ],
   auth: [
-    { selector: ".auth-card", y: 40, opacity: 0, scale: 0.95, duration: 0.7, ease: "power3.out" },
+    { selector: ".auth-card", y: 20, opacity: 0, duration: 0.4, ease: "power2.out" },
   ],
 };
 
@@ -57,18 +57,18 @@ export function usePageEntrance(containerSelector = ".page-enter") {
     const ctx = gsap.context(() => {
       gsap.from(containerSelector, {
         opacity: 0,
-        y: 30,
-        duration: 0.6,
-        ease: "power3.out",
+        y: 15,
+        duration: 0.35,
+        ease: "power2.out",
       });
 
       gsap.from(`${containerSelector} > *`, {
         opacity: 0,
-        y: 20,
-        duration: 0.5,
-        stagger: 0.08,
-        delay: 0.15,
-        ease: "power3.out",
+        y: 12,
+        duration: 0.3,
+        stagger: 0.05,
+        delay: 0.1,
+        ease: "power2.out",
       });
     });
 
@@ -82,11 +82,11 @@ export function usePageEntrance(containerSelector = ".page-enter") {
 
 export function useStagger(selector, options = {}) {
   const defaults = {
-    y: 25,
+    y: 12,
     opacity: 0,
-    duration: 0.5,
-    stagger: 0.08,
-    ease: "power3.out",
+    duration: 0.3,
+    stagger: 0.05,
+    ease: "power2.out",
   };
 
   useEffect(() => {
@@ -104,15 +104,15 @@ export function useStagger(selector, options = {}) {
 
 export function useScrollReveal(selector, options = {}) {
   const defaults = {
-    y: 50,
+    y: 25,
     opacity: 0,
-    duration: 0.8,
-    ease: "power3.out",
+    duration: 0.5,
+    ease: "power2.out",
   };
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.from(selector, { ...defaults, ...options, delay: 0.3 });
+      gsap.from(selector, { ...defaults, ...options, delay: 0.15 });
     });
     return () => ctx.revert();
   }, [selector]);
@@ -124,6 +124,6 @@ export function useScrollReveal(selector, options = {}) {
 
 export function createTimeline(options = {}) {
   return gsap.timeline({
-    defaults: { ease: "power3.out", ...options },
+    defaults: { ease: "power2.out", ...options },
   });
 }

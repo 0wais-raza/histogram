@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════
-   Home Page — Neon Feed
+   Home Page
    ════════════════════════════════════════ */
 
 .home-welcome {
@@ -26,10 +26,9 @@
 .feed-placeholder {
   text-align: center;
   padding: 80px 20px;
-  border: 1px dashed var(--border-glow);
+  border: 1px dashed var(--border);
   border-radius: var(--radius-xl);
-  background: var(--card);
-  backdrop-filter: blur(12px);
+  background: var(--card-solid);
 }
 
 .feed-placeholder .feed-icon {

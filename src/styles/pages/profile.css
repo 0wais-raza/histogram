@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════
-   Profile Page — Neon Avatar & Grid
+   Profile Page
    ════════════════════════════════════════ */
 
 .profile-header {
@@ -11,27 +11,19 @@
   position: relative;
 }
 
-/* ── Avatar with Neon Ring ── */
+/* ── Avatar ── */
 .avatar {
   width: 120px;
   height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid transparent;
-  background-image: linear-gradient(var(--card-solid), var(--card-solid)), linear-gradient(135deg, var(--accent), var(--cyan), var(--accent-deep));
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  box-shadow:
-    0 0 20px rgba(134, 59, 255, 0.2),
-    0 0 40px rgba(134, 59, 255, 0.08);
-  transition: all 0.3s var(--ease-out);
+  border: 2px solid var(--border);
+  transition: border-color 0.2s var(--ease-out);
   flex-shrink: 0;
 }
 
 .avatar:hover {
-  box-shadow:
-    0 0 30px rgba(134, 59, 255, 0.35),
-    0 0 60px rgba(134, 59, 255, 0.15);
+  border-color: var(--border-glow);
 }
 
 .profile-info {
@@ -111,15 +103,12 @@
   border-radius: var(--radius-sm);
   background: var(--card-solid);
   border: 1px solid var(--border);
-  transition: all 0.3s var(--ease-out);
+  transition: border-color 0.2s var(--ease-out);
   cursor: pointer;
 }
 
 .grid-item:hover {
   border-color: var(--border-glow);
-  box-shadow: var(--glow-sm);
-  transform: scale(1.03);
-  z-index: 2;
 }
 
 /* ── Empty State ── */

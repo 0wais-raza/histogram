@@ -1,18 +1,16 @@
 /* ════════════════════════════════════════
-   SweetAlert2 — Neon Cyber Theme
+   SweetAlert2 — Dark Theme
    ════════════════════════════════════════ */
 
 .swal2-popup {
   border-radius: var(--radius-xl) !important;
-  background: rgba(18, 18, 35, 0.95) !important;
-  backdrop-filter: blur(24px) !important;
-  border: 1px solid var(--border-glow) !important;
-  box-shadow: var(--glow-lg) !important;
+  background: var(--card-solid) !important;
+  border: 1px solid var(--border) !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }
 
 .swal-custom-popup {
-  background: rgba(18, 18, 35, 0.95) !important;
+  background: var(--card-solid) !important;
 }
 
 .swal2-title {
@@ -57,7 +55,6 @@
 
 .swal2-input:focus {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px rgba(134, 59, 255, 0.15) !important;
 }
 
 /* ── Buttons ── */
@@ -67,12 +64,6 @@
   border-radius: var(--radius-md) !important;
   font-weight: 600 !important;
   font-family: inherit !important;
-  box-shadow: var(--glow-sm) !important;
-  transition: all 0.25s var(--ease-out) !important;
-}
-
-.swal2-confirm:hover {
-  box-shadow: var(--glow-md) !important;
 }
 
 .swal2-cancel {
@@ -91,10 +82,8 @@
 /* ── Toast ── */
 .swal-custom-toast {
   border-radius: var(--radius-md) !important;
-  background: rgba(18, 18, 35, 0.9) !important;
-  backdrop-filter: blur(16px) !important;
+  background: var(--card-solid) !important;
   border: 1px solid var(--border) !important;
-  box-shadow: var(--glow-sm) !important;
 }
 
 .swal2-timer-progress-bar {

@@ -4,7 +4,6 @@ import gsap from "gsap";
 
 /**
  * PageTransition — wraps page content for smooth entrance animations.
- * Enhanced with neon cyber motion.
  */
 export default function PageTransition({ children }) {
   const ref = useRef(null);
@@ -22,13 +21,12 @@ export default function PageTransition({ children }) {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         ref.current,
-        { opacity: 0, y: 24, filter: "blur(4px)" },
+        { opacity: 0, y: 16 },
         {
           opacity: 1,
           y: 0,
-          filter: "blur(0px)",
-          duration: 0.5,
-          ease: "power3.out",
+          duration: 0.35,
+          ease: "power2.out",
         }
       );
     });

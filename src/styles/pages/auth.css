@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════
-   Auth Pages — Neon Cyber Forms
+   Auth Pages
    ════════════════════════════════════════ */
 
 .auth-page .auth-card .input-group {
@@ -41,7 +41,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  background: var(--border);
 }
 
 /* ════════════════════════════════════════
