@@ -1,0 +1,15 @@
+/* ════════════════════════════════════════
+   Home Page
+   ════════════════════════════════════════ */
+
+/* Home uses .page wrapper — add page-specific styles here */
+
+/* ════════════════════════════════════════
+   Responsive — Mobile (≤640px)
+   ════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .page h1 {
+    font-size: 22px;
+  }
+}

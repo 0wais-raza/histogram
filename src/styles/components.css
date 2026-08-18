@@ -1,0 +1,403 @@
+/* ════════════════════════════════════════
+   Navbar
+   ════════════════════════════════════════ */
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  position: sticky;
+  top: 0;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  font-style: italic;
+}
+
+.nav-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.nav-links button {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* ════════════════════════════════════════
+   Auth Card (Login / Signup)
+   ════════════════════════════════════════ */
+
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+  padding: 16px;
+}
+
+.auth-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-card h1 {
+  margin: 0;
+  text-align: center;
+  font-style: italic;
+}
+
+.auth-card h2 {
+  margin: 0;
+  text-align: center;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.auth-card input,
+.auth-card textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.auth-card input:focus,
+.auth-card textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.auth-card button[type="submit"] {
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-card button:disabled {
+  opacity: 0.6;
+}
+
+.error {
+  color: var(--error);
+  margin: 0;
+  font-size: 14px;
+}
+
+/* ════════════════════════════════════════
+   Buttons
+   ════════════════════════════════════════ */
+
+.btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  transition: 0.1s ease;
+  cursor: pointer;
+}
+
+.btn:hover {
+  opacity: 0.85;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  transition: 0.1s ease;
+}
+
+.btn.primary:hover {
+  opacity: 0.9;
+}
+
+/* ════════════════════════════════════════
+   Password Field & Toggle
+   ════════════════════════════════════════ */
+
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-field input {
+  width: 100%;
+  padding-right: 42px;
+}
+
+.pw-toggle {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  line-height: 1;
+  color: var(--muted);
+  transition: color 0.15s;
+}
+
+.pw-toggle:hover {
+  color: var(--text);
+}
+
+/* ════════════════════════════════════════
+   Password Strength Meter
+   ════════════════════════════════════════ */
+
+.pw-strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pw-strength-bar-bg {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.pw-strength-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: background 0.25s;
+}
+
+.pw-strength-label {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ════════════════════════════════════════
+   Rule Checklist (password / username)
+   ════════════════════════════════════════ */
+
+.pw-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.pw-rules li {
+  font-size: 12px;
+  color: var(--muted);
+  transition: color 0.15s;
+}
+
+.pw-rules li.pass {
+  color: #10b981;
+}
+
+/* ════════════════════════════════════════
+   Text Link (forgot password, etc.)
+   ════════════════════════════════════════ */
+
+.text-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  text-align: center;
+  font-family: inherit;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+.forgot-link {
+  margin-top: -4px;
+}
+
+/* ════════════════════════════════════════
+   Avatar Preview (setup / edit modals)
+   ════════════════════════════════════════ */
+
+.avatar-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  margin-bottom: 4px;
+}
+
+/* ════════════════════════════════════════
+   Generic Page Wrapper
+   ════════════════════════════════════════ */
+
+.page {
+  max-width: 640px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+
+/* ════════════════════════════════════════
+   Loading State
+   ════════════════════════════════════════ */
+
+.loading {
+  text-align: center;
+  color: var(--muted);
+  padding: 48px 16px;
+}
+
+/* ════════════════════════════════════════
+   Modal Backdrop & Content
+   ════════════════════════════════════════ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 380px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal textarea,
+.modal input[type="file"] {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ════════════════════════════════════════
+   Setup Profile Modal (wider)
+   ════════════════════════════════════════ */
+
+.setup-profile-modal {
+  max-width: 420px;
+}
+
+/* ════════════════════════════════════════
+   Responsive — Mobile (≤640px)
+   ════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 10px 16px;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  .nav-links {
+    gap: 8px;
+  }
+
+  .nav-links a {
+    font-size: 13px;
+  }
+
+  .nav-links button {
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+
+  .auth-card {
+    padding: 24px 20px;
+    border-radius: 10px;
+  }
+
+  .auth-card h1 {
+    font-size: 20px;
+  }
+
+  .auth-card h2 {
+    font-size: 15px;
+  }
+
+  .modal {
+    padding: 20px 16px;
+    border-radius: 10px;
+    max-width: 100%;
+  }
+
+  .setup-profile-modal {
+    max-width: 100%;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Tablet (641px–768px) */
+@media (min-width: 641px) and (max-width: 768px) {
+  .nav-links {
+    gap: 12px;
+  }
+}

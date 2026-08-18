@@ -1,0 +1,18 @@
+/* ════════════════════════════════════════
+   Auth Pages (Login / Signup)
+   ════════════════════════════════════════ */
+
+/* Auth-specific styles beyond the shared .auth-card */
+
+/* ════════════════════════════════════════
+   Responsive — Mobile (≤640px)
+   ════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .auth-page {
+    min-height: auto;
+    padding: 24px 12px;
+    align-items: flex-start;
+    padding-top: 48px;
+  }
+}

@@ -1,0 +1,149 @@
+/* ════════════════════════════════════════
+   Landing Page
+   ════════════════════════════════════════ */
+
+.landing {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 16px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  height: 90vh;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f1115, #0b1e3d);
+  min-height: 100vh;
+}
+
+.landing h1,
+.landing p,
+.landing .btn {
+  color: #fff;
+}
+
+.landing .btn:not(.primary) {
+  border-color: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+}
+
+.landing .btn:not(.primary):hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.hero-img {
+  width: 180px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.hero h1 {
+  font-size: 44px;
+  margin: 16px 0 8px;
+}
+
+.hero p {
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.start {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 48px;
+  text-align: left;
+}
+
+.feature-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.feature-card h3 {
+  margin: 0 0 6px;
+}
+
+.feature-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* ════════════════════════════════════════
+   Responsive — Mobile (≤640px)
+   ════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .landing {
+    padding: 32px 16px;
+    height: auto;
+    min-height: 80vh;
+  }
+
+  .hero-img {
+    width: 120px;
+  }
+
+  .hero h1 {
+    font-size: 28px;
+    margin: 12px 0 6px;
+  }
+
+  .hero p {
+    font-size: 15px;
+  }
+
+  .hero-actions {
+    margin-top: 20px;
+  }
+
+  .start {
+    width: 100%;
+  }
+
+  .start .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .features {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 32px;
+  }
+
+  .feature-card {
+    padding: 16px;
+  }
+}
+
+/* Tablet (641px–768px) */
+@media (min-width: 641px) and (max-width: 768px) {
+  .hero h1 {
+    font-size: 36px;
+  }
+
+  .hero p {
+    font-size: 16px;
+  }
+
+  .features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

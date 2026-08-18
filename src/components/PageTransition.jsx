@@ -1,0 +1,45 @@
+import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
+import gsap from "gsap";
+
+/**
+ * PageTransition — wraps page content for smooth entrance animations.
+ *
+ * Usage:
+ *   <PageTransition>
+ *     <div className="page">...</div>
+ *   </PageTransition>
+ *
+ * Animates children with a fade + slide-up on every route change.
+ * Auto-resets scroll to top.
+ */
+export default function PageTransition({ children }) {
+  const ref = useRef(null);
+  const location = useLocation();
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  // Animate entrance on route change
+  useEffect(() => {
+    if (!ref.current) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        ref.current,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+      );
+    });
+
+    return () => ctx.revert();
+  }, [location.pathname]);
+
+  return (
+    <div ref={ref} style={{ minHeight: "calc(100vh - 50px)" }}>
+      {children}
+    </div>
+  );
+}

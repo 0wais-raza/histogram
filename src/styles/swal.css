@@ -1,0 +1,40 @@
+/* ════════════════════════════════════════
+   SweetAlert2 Theme Overrides
+   ════════════════════════════════════════ */
+
+.swal2-popup {
+  border-radius: 14px !important;
+}
+
+.swal-custom-toast {
+  border-radius: 10px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Dark mode overrides */
+body.dark .swal2-popup {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+body.dark .swal2-title {
+  color: var(--text) !important;
+}
+
+body.dark .swal2-html-container {
+  color: var(--muted) !important;
+  margin: 0.5em 1.6em !important;
+}
+
+body.dark .swal2-input,
+body.dark .swal2-input:focus {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+body.dark .swal2-cancel {
+  background: var(--border) !important;
+  color: var(--text) !important;
+}
