@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc } from "firebase/firestore";
 import { storage, db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { alertError, alertSuccess, alertLoading } from "../utils/alerts";
+import { User, Check, X, ArrowRight } from "lucide-react";
 
 // ──────────────────────────────────────
-// 👤  USERNAME RULES  — edit these
+// USERNAME RULES
 // ──────────────────────────────────────
 const USERNAME_RULES = [
   { test: (u) => u.length >= 3, label: "At least 3 characters" },
@@ -25,7 +26,7 @@ function RuleChecklist({ rules, value }) {
     <ul className="pw-rules">
       {rules.map((r, i) => (
         <li key={i} className={r.test(value) ? "pass" : ""}>
-          {r.test(value) ? "✅" : "⬜"} {r.label}
+          {r.test(value) ? <Check size={12} /> : <X size={12} />} {r.label}
         </li>
       ))}
     </ul>
@@ -40,7 +41,6 @@ export default function SetupProfile({ profile, onComplete }) {
   const [preview, setPreview] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  // Prevent closing if no username claimed
   function handleClose() {
     alertError(
       "Profile required",
@@ -59,10 +59,7 @@ export default function SetupProfile({ profile, onComplete }) {
       );
     }
     if (f.size > MAX_SIZE_MB * 1024 * 1024) {
-      return alertError(
-        "File too large",
-        `Image must be under ${MAX_SIZE_MB} MB.`
-      );
+      return alertError("File too large", `Image must be under ${MAX_SIZE_MB} MB.`);
     }
 
     setFile(f);
@@ -72,7 +69,6 @@ export default function SetupProfile({ profile, onComplete }) {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    // Validate username
     for (const rule of USERNAME_RULES) {
       if (!rule.test(username)) {
         return alertError("Invalid username", rule.label);
@@ -80,13 +76,11 @@ export default function SetupProfile({ profile, onComplete }) {
     }
 
     setUploading(true);
-    const toast = alertLoading("Setting up your profile…");
+    const toast = alertLoading("Setting up your profile...");
 
     try {
-      // 1. Claim the username
       await claimUsername(username);
 
-      // 2. Upload profile picture if selected
       let profilePic = profile?.profilePic || "";
       if (file) {
         const storageRef = ref(storage, `profilePics/${user.uid}`);
@@ -94,7 +88,6 @@ export default function SetupProfile({ profile, onComplete }) {
         profilePic = await getDownloadURL(storageRef);
       }
 
-      // 3. Save bio + profile pic
       await updateDoc(doc(db, "users", user.uid), {
         bio: bio.trim(),
         profilePic,
@@ -102,7 +95,7 @@ export default function SetupProfile({ profile, onComplete }) {
 
       toast.close();
       await alertSuccess(
-        "Profile complete! 🎉",
+        "Profile complete!",
         `Welcome @${username.trim()} — you're all set!`
       );
       onComplete();
@@ -124,7 +117,10 @@ export default function SetupProfile({ profile, onComplete }) {
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
-        <h3>Set up your profile</h3>
+        <h3>
+          <User size={20} style={{ verticalAlign: "middle", marginRight: 8 }} />
+          Set up your profile
+        </h3>
         <p className="muted" style={{ margin: "-4px 0 8px", fontSize: "13px" }}>
           Pick a unique username — this is how people find you.
         </p>
@@ -155,12 +151,18 @@ export default function SetupProfile({ profile, onComplete }) {
           maxLength={150}
           value={bio}
           onChange={(e) => setBio(e.target.value)}
-          style={{ fontFamily: "inherit", fontSize: "14px" }}
         />
         <p className="muted">{bio.length}/150</p>
 
         <button type="submit" disabled={uploading}>
-          {uploading ? "Saving…" : "Complete setup"}
+          {uploading ? (
+            "Saving..."
+          ) : (
+            <>
+              Complete setup
+              <ArrowRight size={18} />
+            </>
+          )}
         </button>
       </form>
     </div>

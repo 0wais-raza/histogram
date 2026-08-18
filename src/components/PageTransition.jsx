@@ -4,14 +4,7 @@ import gsap from "gsap";
 
 /**
  * PageTransition — wraps page content for smooth entrance animations.
- *
- * Usage:
- *   <PageTransition>
- *     <div className="page">...</div>
- *   </PageTransition>
- *
- * Animates children with a fade + slide-up on every route change.
- * Auto-resets scroll to top.
+ * Enhanced with neon cyber motion.
  */
 export default function PageTransition({ children }) {
   const ref = useRef(null);
@@ -29,8 +22,14 @@ export default function PageTransition({ children }) {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         ref.current,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+        { opacity: 0, y: 24, filter: "blur(4px)" },
+        {
+          opacity: 1,
+          y: 0,
+          filter: "blur(0px)",
+          duration: 0.5,
+          ease: "power3.out",
+        }
       );
     });
 
@@ -38,7 +37,7 @@ export default function PageTransition({ children }) {
   }, [location.pathname]);
 
   return (
-    <div ref={ref} style={{ minHeight: "calc(100vh - 50px)" }}>
+    <div ref={ref} style={{ minHeight: "calc(100vh - 60px)" }}>
       {children}
     </div>
   );

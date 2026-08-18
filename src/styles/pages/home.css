@@ -1,8 +1,62 @@
 /* ════════════════════════════════════════
-   Home Page
+   Home Page — Neon Feed
    ════════════════════════════════════════ */
 
-/* Home uses .page wrapper — add page-specific styles here */
+.home-welcome {
+  margin-bottom: 40px;
+}
+
+.home-welcome h1 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+.home-welcome .neon-text {
+  font-size: 28px;
+}
+
+.home-welcome p {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+/* ── Feed Placeholder ── */
+.feed-placeholder {
+  text-align: center;
+  padding: 80px 20px;
+  border: 1px dashed var(--border-glow);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  backdrop-filter: blur(12px);
+}
+
+.feed-placeholder .feed-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(134, 59, 255, 0.1);
+  border: 1px solid rgba(134, 59, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  color: var(--accent-bright);
+}
+
+.feed-placeholder h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.feed-placeholder p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  max-width: 300px;
+  margin: 0 auto;
+}
 
 /* ════════════════════════════════════════
    Responsive — Mobile (≤640px)
@@ -11,5 +65,14 @@
 @media (max-width: 640px) {
   .page h1 {
     font-size: 22px;
+  }
+
+  .home-welcome h1,
+  .home-welcome .neon-text {
+    font-size: 24px;
+  }
+
+  .feed-placeholder {
+    padding: 48px 16px;
   }
 }

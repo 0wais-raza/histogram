@@ -4,6 +4,7 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import SetupProfile from "../components/SetupProfile";
+import { Sparkles } from "lucide-react";
 
 export default function Home() {
   const { user } = useAuth();
@@ -11,7 +12,6 @@ export default function Home() {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  // Check if the user has completed their profile
   useEffect(() => {
     async function checkProfile() {
       if (!user) return;
@@ -20,13 +20,11 @@ export default function Home() {
         if (snap.exists()) {
           const data = snap.data();
           setProfile(data);
-          // No username = needs setup
           if (!data.username) {
             setNeedsSetup(true);
           }
         }
       } catch {
-        // If doc doesn't exist, they need setup
         setNeedsSetup(true);
       } finally {
         setChecking(false);
@@ -37,7 +35,6 @@ export default function Home() {
 
   function handleSetupComplete() {
     setNeedsSetup(false);
-    // Refresh profile data
     getDoc(doc(db, "users", user.uid)).then((snap) => {
       if (snap.exists()) setProfile(snap.data());
     });
@@ -46,7 +43,12 @@ export default function Home() {
   usePageAnimations("home");
 
   if (checking) {
-    return <div className="loading">Loading…</div>;
+    return (
+      <div className="loading">
+        <div className="loading-spinner" />
+        <span>Loading...</span>
+      </div>
+    );
   }
 
   return (
@@ -55,8 +57,31 @@ export default function Home() {
         <SetupProfile profile={profile} onComplete={handleSetupComplete} />
       )}
 
-      <h1>Welcome{profile?.username ? `, @${profile.username}` : ""} 👋</h1>
-      <p>Feed coming in Phase 2.</p>
+      <div className="home-welcome">
+        <h1>
+          Welcome{profile?.username ? ", " : " "}
+          {profile?.username ? (
+            <span className="neon-text">@{profile.username}</span>
+          ) : (
+            ""
+          )}{" "}
+          <span role="img" aria-label="wave">
+            👋
+          </span>
+        </h1>
+        <p>Your personalized feed is coming soon.</p>
+      </div>
+
+      <div className="feed-placeholder">
+        <div className="feed-icon">
+          <Sparkles size={32} />
+        </div>
+        <h2>Feed Coming Soon</h2>
+        <p>
+          We're working on something amazing. The photo feed is launching in
+          Phase 2.
+        </p>
+      </div>
     </div>
   );
 }

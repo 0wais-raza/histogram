@@ -3,9 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import { alertError, alertSuccess } from "../utils/alerts";
+import { Mail, Lock, Eye, EyeOff, UserPlus, Check, X } from "lucide-react";
 
 // ──────────────────────────────────────
-// 🔒  PASSWORD RULES  — edit these
+// PASSWORD RULES
 // ──────────────────────────────────────
 const PASSWORD_RULES = [
   { test: (p) => p.length >= 8, label: "At least 8 characters" },
@@ -23,7 +24,7 @@ function getStrength(password) {
   return score;
 }
 
-const STRENGTH_COLORS = ["#ef4444", "#f97316", "#eab308", "#a3e635", "#22c55e", "#10b981"];
+const STRENGTH_COLORS = ["#ef4444", "#f97316", "#eab308", "#a3e635", "#22c55e", "#34d399"];
 const STRENGTH_LABELS = ["Very weak", "Weak", "Fair", "Good", "Strong", "Very strong"];
 
 function PasswordStrength({ password }) {
@@ -59,7 +60,7 @@ function RuleChecklist({ rules, value }) {
     <ul className="pw-rules">
       {rules.map((r, i) => (
         <li key={i} className={r.test(value) ? "pass" : ""}>
-          {r.test(value) ? "✅" : "⬜"} {r.label}
+          {r.test(value) ? <Check size={12} /> : <X size={12} />} {r.label}
         </li>
       ))}
     </ul>
@@ -99,7 +100,7 @@ export default function Signup() {
     try {
       await signup(email, password);
       alertSuccess(
-        "Account created! 🎉",
+        "Account created!",
         "Now let's set up your profile — pick a username and photo."
       );
       navigate("/home");
@@ -117,16 +118,19 @@ export default function Signup() {
     <div className="auth-page page-enter">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Histogram</h1>
-        <h2>Sign up</h2>
+        <h2>Create your account</h2>
 
-        <input
-          type="email"
-          placeholder="Email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-        />
+        <div className="input-group">
+          <input
+            type="email"
+            placeholder="Email address"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+          />
+          <Mail className="input-icon" size={18} />
+        </div>
 
         <div className="password-field">
           <input
@@ -137,6 +141,11 @@ export default function Signup() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
           />
+          <Lock
+            className="input-icon"
+            size={18}
+            style={{ position: "absolute", left: 14 }}
+          />
           <button
             type="button"
             className="pw-toggle"
@@ -144,7 +153,7 @@ export default function Signup() {
             tabIndex={-1}
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
-            {showPassword ? "🙈" : "👁️"}
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
 
@@ -160,6 +169,11 @@ export default function Signup() {
             onChange={(e) => setConfirm(e.target.value)}
             autoComplete="new-password"
           />
+          <Lock
+            className="input-icon"
+            size={18}
+            style={{ position: "absolute", left: 14 }}
+          />
           <button
             type="button"
             className="pw-toggle"
@@ -167,15 +181,22 @@ export default function Signup() {
             tabIndex={-1}
             aria-label={showConfirm ? "Hide password" : "Show password"}
           >
-            {showConfirm ? "🙈" : "👁️"}
+            {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
 
         <button type="submit" disabled={loading}>
-          {loading ? "Creating account…" : "Sign up"}
+          {loading ? (
+            "Creating account..."
+          ) : (
+            <>
+              <UserPlus size={18} />
+              Sign up
+            </>
+          )}
         </button>
 
-        <p>
+        <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "14px" }}>
           Already have an account? <Link to="/login">Log in</Link>
         </p>
       </form>

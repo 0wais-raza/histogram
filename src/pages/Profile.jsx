@@ -13,6 +13,7 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import EditProfile from "../components/EditProfile";
+import { ImageIcon, Pencil } from "lucide-react";
 
 export default function Profile() {
   const { uid } = useParams();
@@ -49,7 +50,13 @@ export default function Profile() {
 
   usePageAnimations("profile");
 
-  if (loading) return <div className="loading">Loading…</div>;
+  if (loading)
+    return (
+      <div className="loading">
+        <div className="loading-spinner" />
+        <span>Loading...</span>
+      </div>
+    );
 
   if (!profile) return <div className="page">Profile not found.</div>;
 
@@ -72,18 +79,39 @@ export default function Profile() {
           src={profile.profilePic || "/histogram.png"}
           alt={profile.username || "user"}
         />
-        <div>
-          <h2>{profile.username ? `@${profile.username}` : "New user"}</h2>
+        <div className="profile-info">
+          <h2>
+            @{profile.username || "New user"}
+          </h2>
           <p className="bio">{profile.bio || "No bio yet."}</p>
           <div className="stats">
-            <span>{posts.length} posts</span>
-            <span>{profile.followersCount ?? 0} followers</span>
-            <span>{profile.followingCount ?? 0} following</span>
+            <div className="stat-item">
+              <span className="stat-value">{posts.length}</span>
+              <span className="stat-label">Posts</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">
+                {profile.followersCount ?? 0}
+              </span>
+              <span className="stat-label">Followers</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">
+                {profile.followingCount ?? 0}
+              </span>
+              <span className="stat-label">Following</span>
+            </div>
           </div>
           {isOwner && (
-            <button className="btn" onClick={() => setEditing(true)}>
-              Edit profile
-            </button>
+            <div className="profile-actions">
+              <button
+                className="btn"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil size={16} />
+                Edit profile
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -94,9 +122,14 @@ export default function Profile() {
 
       <div className="profile-posts">
         {posts.length === 0 ? (
-          <p className="muted">
-            {isOwner ? "No posts yet — create your first!" : "No posts yet."}
-          </p>
+          <div className="profile-empty">
+            <ImageIcon size={48} strokeWidth={1.5} />
+            <p>
+              {isOwner
+                ? "No posts yet — create your first!"
+                : "No posts yet."}
+            </p>
+          </div>
         ) : (
           posts.map((p) => (
             <img

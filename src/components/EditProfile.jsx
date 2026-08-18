@@ -4,6 +4,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { storage, db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { alertError, alertSuccess, alertLoading } from "../utils/alerts";
+import { Save, X, User } from "lucide-react";
 
 const MAX_BIO = 150;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -30,10 +31,7 @@ export default function EditProfile({ profile, onClose }) {
       );
     }
     if (f.size > MAX_SIZE_MB * 1024 * 1024) {
-      return alertError(
-        "File too large",
-        `Image must be under ${MAX_SIZE_MB} MB.`
-      );
+      return alertError("File too large", `Image must be under ${MAX_SIZE_MB} MB.`);
     }
 
     setFile(f);
@@ -44,10 +42,12 @@ export default function EditProfile({ profile, onClose }) {
     e.preventDefault();
     setUploading(true);
 
-    const toast = alertLoading("Saving profile…");
+    const toast = alertLoading("Saving profile...");
     try {
-      // If username changed (and user already had one), claim the new one
-      if (hasUsername && username.trim().toLowerCase() !== profile.username.toLowerCase()) {
+      if (
+        hasUsername &&
+        username.trim().toLowerCase() !== profile.username.toLowerCase()
+      ) {
         await claimUsername(username);
       }
 
@@ -59,14 +59,17 @@ export default function EditProfile({ profile, onClose }) {
       }
 
       const updateData = { bio: bio.trim(), profilePic };
-      if (hasUsername && username.trim().toLowerCase() !== profile.username.toLowerCase()) {
+      if (
+        hasUsername &&
+        username.trim().toLowerCase() !== profile.username.toLowerCase()
+      ) {
         updateData.username = username.trim();
         updateData.usernameLower = username.trim().toLowerCase();
       }
 
       await updateDoc(doc(db, "users", user.uid), updateData);
       toast.close();
-      await alertSuccess("Profile updated! ✨", "Your changes are saved.");
+      await alertSuccess("Profile updated!", "Your changes are saved.");
       onClose();
     } catch (err) {
       toast.close();
@@ -86,7 +89,10 @@ export default function EditProfile({ profile, onClose }) {
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
-        <h3>Edit profile</h3>
+        <h3>
+          <User size={20} style={{ verticalAlign: "middle", marginRight: 8 }} />
+          Edit profile
+        </h3>
 
         {hasUsername && (
           <>
@@ -122,11 +128,13 @@ export default function EditProfile({ profile, onClose }) {
         </p>
 
         <div className="modal-actions">
-          <button type="button" className="btn" onClick={onClose}>
+          <button type="button" className="btn ghost" onClick={onClose}>
+            <X size={16} />
             Cancel
           </button>
           <button className="btn primary" disabled={uploading}>
-            {uploading ? "Saving…" : "Save"}
+            <Save size={16} />
+            {uploading ? "Saving..." : "Save"}
           </button>
         </div>
       </form>

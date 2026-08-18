@@ -8,6 +8,7 @@ import {
   alertPrompt,
   alertLoading,
 } from "../utils/alerts";
+import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
 
 export default function Login() {
   const [identifier, setIdentifier] = useState("");
@@ -22,7 +23,6 @@ export default function Login() {
     setLoading(true);
     try {
       await login(identifier, password);
-      // Navigate immediately — don't wait for a timed alert
       navigate("/home");
     } catch (err) {
       const msg = err.message.replace("Firebase: ", "");
@@ -39,12 +39,12 @@ export default function Login() {
     );
     if (!value) return;
 
-    const toast = alertLoading("Sending reset link…");
+    const toast = alertLoading("Sending reset link...");
     try {
       await resetPassword(value);
       toast.close();
       alertSuccess(
-        "Check your inbox 📧",
+        "Check your inbox",
         "We sent a password reset link. Check spam if you don't see it."
       );
     } catch (err) {
@@ -62,16 +62,19 @@ export default function Login() {
     <div className="auth-page page-enter">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Histogram</h1>
-        <h2>Log in</h2>
+        <h2>Log in to your account</h2>
 
-        <input
-          type="text"
-          placeholder="Email or username"
-          required
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          autoComplete="username"
-        />
+        <div className="input-group">
+          <input
+            type="text"
+            placeholder="Email or username"
+            required
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            autoComplete="username"
+          />
+          <Mail className="input-icon" size={18} />
+        </div>
 
         <div className="password-field">
           <input
@@ -82,6 +85,11 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
           />
+          <Lock
+            className="input-icon"
+            size={18}
+            style={{ position: "absolute", left: 14 }}
+          />
           <button
             type="button"
             className="pw-toggle"
@@ -89,12 +97,19 @@ export default function Login() {
             tabIndex={-1}
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
-            {showPassword ? "🙈" : "👁️"}
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
 
         <button type="submit" disabled={loading}>
-          {loading ? "Logging in…" : "Log in"}
+          {loading ? (
+            "Logging in..."
+          ) : (
+            <>
+              <LogIn size={18} />
+              Log in
+            </>
+          )}
         </button>
 
         <button
@@ -105,8 +120,9 @@ export default function Login() {
           Forgot password?
         </button>
 
-        <p>
-          Don't have an account? <Link to="/signup">Sign up</Link>
+        <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "14px" }}>
+          Don't have an account?{" "}
+          <Link to="/signup">Sign up</Link>
         </p>
       </form>
     </div>
