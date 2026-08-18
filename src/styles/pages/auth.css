@@ -2,27 +2,55 @@
    Auth Pages
    ════════════════════════════════════════ */
 
-.auth-page .auth-card .input-group {
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 60px);
+  padding: 24px 16px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Input group (email field with icon) ── */
+.auth-card .input-group {
   position: relative;
 }
 
-.auth-page .auth-card .input-icon {
+.auth-card .input-group input {
+  padding-left: 42px;
+}
+
+.auth-card .input-icon {
   position: absolute;
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--muted);
-  transition: color 0.2s;
   pointer-events: none;
 }
 
-.auth-page .auth-card input:focus ~ .input-icon,
-.auth-page .auth-card input:not(:placeholder-shown) ~ .input-icon {
+.auth-card input:focus ~ .input-icon,
+.auth-card input:not(:placeholder-shown) ~ .input-icon {
   color: var(--accent-bright);
 }
 
-.auth-page .auth-card .input-group input {
+/* ── Password field with icon ── */
+.auth-card .password-field {
+  position: relative;
+}
+
+.auth-card .password-field input {
+  width: 100%;
   padding-left: 42px;
+  padding-right: 44px;
+}
+
+.auth-card .password-field .pw-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* ── Divider ── */

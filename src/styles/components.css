@@ -30,10 +30,15 @@
   color: var(--accent-bright);
 }
 
+.logo svg {
+  color: var(--accent-bright);
+}
+
 .logo svg,
 .logo img {
-  height: 28px;
-  width: 28px;
+  height: 24px;
+  width: 24px;
+  flex-shrink: 0;
 }
 
 .nav-links {

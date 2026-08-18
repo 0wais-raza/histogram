@@ -1,20 +1,10 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import { alertConfirm, alertSuccess } from "../utils/alerts";
-import {
-  Sun,
-  Moon,
-  LogOut,
-  Home,
-  User,
-  LogIn,
-  UserPlus,
-} from "lucide-react";
+import { Home, LogOut, User, LogIn, UserPlus } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const { dark, toggle } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -35,16 +25,13 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link to="/" className="logo">
+      <Link to="/home" className="logo">
+        <Home size={22} />
         Histogram
       </Link>
       <div className="nav-links">
         {user ? (
           <>
-            <Link to="/home" className={isActive("/home") ? "active" : ""}>
-              <Home size={16} />
-              Feed
-            </Link>
             <Link
               to={`/profile/${user.uid}`}
               className={location.pathname.includes("/profile") ? "active" : ""}
@@ -52,10 +39,6 @@ export default function Navbar() {
               <User size={16} />
               Profile
             </Link>
-            <button onClick={toggle}>
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
-              {dark ? "Light" : "Dark"}
-            </button>
             <button onClick={handleLogout} className="nav-btn-primary">
               <LogOut size={16} />
               Logout

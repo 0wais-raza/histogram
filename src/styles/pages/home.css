@@ -3,7 +3,7 @@
    ════════════════════════════════════════ */
 
 .home-welcome {
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
 .home-welcome h1 {
@@ -17,13 +17,8 @@
   font-size: 28px;
 }
 
-.home-welcome p {
-  color: var(--text-secondary);
-  font-size: 15px;
-}
-
-/* ── Feed Placeholder ── */
-.feed-placeholder {
+/* ── Empty State ── */
+.home-empty {
   text-align: center;
   padding: 80px 20px;
   border: 1px dashed var(--border);
@@ -31,30 +26,303 @@
   background: var(--card-solid);
 }
 
-.feed-placeholder .feed-icon {
-  width: 64px;
-  height: 64px;
+.home-empty p {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+/* ════════════════════════════════════════
+   Feed
+   ════════════════════════════════════════ */
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.feed-post {
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.feed-post-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.feed-post-avatar {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(134, 59, 255, 0.1);
-  border: 1px solid rgba(134, 59, 255, 0.2);
+  background: rgba(134, 59, 255, 0.15);
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 20px;
-  color: var(--accent-bright);
-}
-
-.feed-placeholder h2 {
-  font-size: 20px;
   font-weight: 700;
-  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--accent-bright);
+  flex-shrink: 0;
 }
 
-.feed-placeholder p {
-  color: var(--text-secondary);
+.feed-post-author {
+  font-weight: 600;
   font-size: 14px;
-  max-width: 300px;
+}
+
+.feed-post-image {
+  width: 100%;
+  display: block;
+  max-height: 600px;
+  object-fit: cover;
+}
+
+.feed-post-caption {
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ════════════════════════════════════════
+   FAB — Create Post
+   ════════════════════════════════════════ */
+
+.fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  transition: opacity 0.2s var(--ease-out);
+}
+
+.fab:hover {
+  opacity: 0.85;
+}
+
+/* ════════════════════════════════════════
+   Create Post Modal
+   ════════════════════════════════════════ */
+
+.create-post-modal {
+  max-width: 480px;
+}
+
+.create-post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.create-post-header h3 {
+  margin: 0;
+}
+
+.create-post-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 48px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  color: var(--muted);
+}
+
+.create-post-dropzone:hover {
+  border-color: var(--accent);
+}
+
+.create-post-dropzone p {
+  margin: 12px 0 4px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.create-post-dropzone span {
+  font-size: 12px;
+}
+
+.create-post-preview {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.create-post-preview img {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  display: block;
+}
+
+.create-post-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.create-post-caption {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(10, 10, 20, 0.6);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.create-post-caption:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.create-post-count {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+  margin: -8px 0 0;
+}
+
+.create-post-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ════════════════════════════════════════
+   Skeleton Loading
+   ════════════════════════════════════════ */
+
+.skeleton-post,
+.skeleton-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.skeleton-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.skeleton-avatar-large {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--border);
   margin: 0 auto;
+}
+
+.skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.skeleton-lines.center {
+  align-items: center;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--border);
+  width: 100%;
+}
+
+.skeleton-line.short {
+  width: 40%;
+}
+
+.skeleton-line.medium {
+  width: 65%;
+}
+
+.skeleton-line.tiny {
+  width: 25%;
+  height: 10px;
+}
+
+.skeleton-image {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--border);
+}
+
+.skeleton-actions {
+  display: flex;
+  gap: 12px;
+  padding: 8px 16px;
+}
+
+.skeleton-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--border);
+}
+
+.skeleton-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+.skeleton-stat {
+  width: 48px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--border);
+}
+
+.skeleton-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  overflow: hidden;
 }
 
 /* ════════════════════════════════════════
@@ -62,16 +330,19 @@
    ════════════════════════════════════════ */
 
 @media (max-width: 640px) {
-  .page h1 {
-    font-size: 22px;
-  }
-
   .home-welcome h1,
   .home-welcome .neon-text {
     font-size: 24px;
   }
 
-  .feed-placeholder {
+  .home-empty {
     padding: 48px 16px;
+  }
+
+  .fab {
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
   }
 }

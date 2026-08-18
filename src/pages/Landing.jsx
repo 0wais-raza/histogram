@@ -7,7 +7,6 @@ import {
   Shield,
   Sparkles,
   ArrowRight,
-  Zap,
 } from "lucide-react";
 
 const features = [
@@ -45,14 +44,14 @@ export default function Landing() {
         </div>
         <h1>Histogram</h1>
         <p>
-          Share moments. Follow friends. An Instagram-style photo feed built on
-          Firebase with a cyberpunk edge.
+          Share moments. Follow friends. A photo feed built on
+          Firebase with a modern edge.
         </p>
         <div className="hero-actions">
           {user ? (
             <Link to="/home" className="btn primary">
-              <Zap size={18} />
               Go to feed
+              <ArrowRight size={18} />
             </Link>
           ) : (
             <div className="start">

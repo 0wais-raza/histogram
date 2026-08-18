@@ -85,11 +85,7 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
           />
-          <Lock
-            className="input-icon"
-            size={18}
-            style={{ position: "absolute", left: 14 }}
-          />
+          <Lock className="input-icon" size={18} />
           <button
             type="button"
             className="pw-toggle"
