@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useState, useRef } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { storage, db } from "../firebase/config";
+import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
-import { alertError, alertSuccess, alertLoading } from "../utils/alerts";
-import { User, Check, X, ArrowRight } from "lucide-react";
+import { alertError } from "../utils/alerts";
+import { uploadImage } from "../utils/uploadImage";
+import { User, Check, X, Camera } from "lucide-react";
 
 // ──────────────────────────────────────
 // USERNAME RULES
@@ -41,6 +41,8 @@ export default function SetupProfile({ profile, onComplete }) {
   const [preview, setPreview] = useState("");
   const [uploading, setUploading] = useState(false);
 
+  const fileRef = useRef(null);
+
   function handleClose() {
     alertError(
       "Profile required",
@@ -76,31 +78,25 @@ export default function SetupProfile({ profile, onComplete }) {
     }
 
     setUploading(true);
-    const toast = alertLoading("Setting up your profile...");
-
     try {
-      await claimUsername(username);
+      // Run username claim + image upload in parallel
+      const tasks = [claimUsername(username)];
 
       let profilePic = profile?.profilePic || "";
       if (file) {
-        const storageRef = ref(storage, `profilePics/${user.uid}`);
-        await uploadBytes(storageRef, file);
-        profilePic = await getDownloadURL(storageRef);
+        tasks.push(uploadImage(file));
       }
+
+      const results = await Promise.all(tasks);
+      if (file) profilePic = results[1];
 
       await updateDoc(doc(db, "users", user.uid), {
         bio: bio.trim(),
         profilePic,
       });
 
-      toast.close();
-      await alertSuccess(
-        "Profile complete!",
-        `Welcome @${username.trim()} — you're all set!`
-      );
       onComplete();
     } catch (err) {
-      toast.close();
       alertError(
         "Setup failed",
         err.message.replace("Firebase: ", "") || "Something went wrong."
@@ -117,13 +113,39 @@ export default function SetupProfile({ profile, onComplete }) {
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
-        <h3>
-          <User size={20} style={{ verticalAlign: "middle", marginRight: 8 }} />
-          Set up your profile
-        </h3>
+        <div className="setup-profile-header">
+          <User size={20} />
+          <span>Set up your profile</span>
+        </div>
         <p className="muted" style={{ margin: "-4px 0 8px", fontSize: "13px" }}>
           Pick a unique username — this is how people find you.
         </p>
+
+        {/* ── Avatar picker ── */}
+        <div className="setup-avatar-picker">
+          <div
+            className="setup-avatar-ring"
+            onClick={() => fileRef.current?.click()}
+          >
+            {preview ? (
+              <img src={preview} alt="Preview" className="setup-avatar-img" />
+            ) : (
+              <div className="setup-avatar-placeholder">
+                <Camera size={24} />
+              </div>
+            )}
+            <div className="setup-avatar-overlay">
+              <Camera size={16} />
+            </div>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
+        </div>
 
         <label className="muted">Username *</label>
         <input
@@ -135,16 +157,6 @@ export default function SetupProfile({ profile, onComplete }) {
         />
         {username && <RuleChecklist rules={USERNAME_RULES} value={username} />}
 
-        <label className="muted">Profile picture</label>
-        {preview && (
-          <img src={preview} alt="Preview" className="avatar-preview" />
-        )}
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          onChange={handleFileChange}
-        />
-
         <label className="muted">Bio (optional, max 150)</label>
         <textarea
           rows="3"
@@ -154,14 +166,14 @@ export default function SetupProfile({ profile, onComplete }) {
         />
         <p className="muted">{bio.length}/150</p>
 
-        <button type="submit" disabled={uploading}>
+        <button type="submit" disabled={uploading} className="setup-submit">
           {uploading ? (
-            "Saving..."
+            <span className="setup-btn-loading">
+              <span className="setup-btn-spinner" />
+              Saving...
+            </span>
           ) : (
-            <>
-              Complete setup
-              <ArrowRight size={18} />
-            </>
+            "Complete setup"
           )}
         </button>
       </form>

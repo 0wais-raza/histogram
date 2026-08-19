@@ -11,7 +11,8 @@ import {
   UserPlus,
   ChevronDown,
   Camera,
-  Pencil,
+  Plus,
+  Compass,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -62,6 +63,20 @@ export default function Navbar() {
     navigate("/");
   }
 
+  function handleNewPost() {
+    // If we're on the home page, use the local state
+    if (window.__histogramShowCreate) {
+      window.__histogramShowCreate();
+    } else {
+      // Navigate to home first, then open
+      navigate("/home");
+      // Small delay to let Home mount
+      setTimeout(() => {
+        window.__histogramShowCreate?.();
+      }, 300);
+    }
+  }
+
   return (
     <nav className={`navbar ${isLanding ? "navbar-landing" : ""}`}>
       <Link to="/home" className="logo">
@@ -71,60 +86,71 @@ export default function Navbar() {
 
       <div className="nav-right">
         {user ? (
-          <div className="nav-avatar-wrapper" ref={menuRef}>
+          <>
             <button
-              className="nav-avatar-btn"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Menu"
+              className="btn primary nav-new-post-btn"
+              onClick={handleNewPost}
             >
-              {profilePic ? (
-                <img src={profilePic} alt="" className="nav-avatar-img" />
-              ) : (
-                <span className="nav-avatar-fallback">
-                  {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "?"}
-                </span>
-              )}
-              <ChevronDown size={14} className={`nav-avatar-chevron ${menuOpen ? "open" : ""}`} />
+              <Plus size={16} />
+              <span className="nav-new-post-text">New post</span>
             </button>
 
-            {menuOpen && (
-              <div className="nav-dropdown">
-                <div className="nav-dropdown-header">
-                  {profilePic ? (
-                    <img src={profilePic} alt="" className="nav-dropdown-avatar" />
-                  ) : (
-                    <span className="nav-dropdown-avatar-fallback">
-                      {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "?"}
-                    </span>
-                  )}
-                  <div className="nav-dropdown-info">
-                    <span className="nav-dropdown-name">
-                      {user.displayName || user.email?.split("@")[0]}
-                    </span>
-                    <span className="nav-dropdown-email">{user.email}</span>
-                  </div>
-                </div>
+            <div className="nav-avatar-wrapper" ref={menuRef}>
+              <button
+                className="nav-avatar-btn"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-label="Menu"
+              >
+                {profilePic ? (
+                  <img src={profilePic} alt="" className="nav-avatar-img" />
+                ) : (
+                  <span className="nav-avatar-fallback">
+                    {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "?"}
+                  </span>
+                )}
+                <ChevronDown size={14} className={`nav-avatar-chevron ${menuOpen ? "open" : ""}`} />
+              </button>
 
-                <div className="nav-dropdown-divider" />
+              {menuOpen && (
+                <div className="nav-dropdown">
+                  <div className="nav-dropdown-header">
+                    {profilePic ? (
+                      <img src={profilePic} alt="" className="nav-dropdown-avatar" />
+                    ) : (
+                      <span className="nav-dropdown-avatar-fallback">
+                        {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "?"}
+                      </span>
+                    )}
+                    <div className="nav-dropdown-info">
+                      <span className="nav-dropdown-name">
+                        {user.displayName || user.email?.split("@")[0]}
+                      </span>
+                      <span className="nav-dropdown-email">{user.email}</span>
+                    </div>
+                  </div>
+
+                  <div className="nav-dropdown-divider" />
+
+                <Link to="/explore" className="nav-dropdown-item">
+                  <Compass size={16} />
+                  Explore
+                </Link>
 
                 <Link to={`/profile/${user.uid}`} className="nav-dropdown-item">
                   <User size={16} />
                   Profile
                 </Link>
-                <Link to={`/profile/${user.uid}`} className="nav-dropdown-item">
-                  <Pencil size={16} />
-                  Edit profile
-                </Link>
 
                 <div className="nav-dropdown-divider" />
 
-                <button onClick={handleLogout} className="nav-dropdown-item nav-dropdown-logout">
-                  <LogOut size={16} />
-                  Log out
-                </button>
-              </div>
-            )}
-          </div>
+                  <button onClick={handleLogout} className="nav-dropdown-item nav-dropdown-logout">
+                    <LogOut size={16} />
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
         ) : (
           <div className="nav-auth-links">
             <Link to="/login" className="btn ghost nav-btn">

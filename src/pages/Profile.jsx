@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
+import { useParams, Link } from "react-router-dom";
 import {
   doc,
   getDoc,
@@ -8,46 +8,95 @@ import {
   where,
   orderBy,
   getDocs,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import EditProfile from "../components/EditProfile";
-import { ImageIcon, Pencil } from "lucide-react";
+import { ImageIcon, Trash2, UserPlus, UserMinus } from "lucide-react";
 import { ProfileSkeleton } from "../components/LoadingSkeleton";
+import { alertConfirm, alertError, alertSuccess } from "../utils/alerts";
 
 export default function Profile() {
   const { uid } = useParams();
-  const { user } = useAuth();
+  const { user, followUser, isFollowing } = useAuth();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [following, setFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const isOwner = user?.uid === uid;
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const userSnap = await getDoc(doc(db, "users", uid));
+      if (userSnap.exists()) setProfile(userSnap.data());
+    } catch {
+      // silent
+    }
+  }, [uid]);
+
+  const loadPosts = useCallback(async () => {
+    try {
+      const postsSnap = await getDocs(
+        query(
+          collection(db, "posts"),
+          where("authorId", "==", uid),
+          orderBy("createdAt", "desc")
+        )
+      );
+      setPosts(postsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch {
+      // silent
+    }
+  }, [uid]);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
-      try {
-        const userSnap = await getDoc(doc(db, "users", uid));
-        if (userSnap.exists()) setProfile(userSnap.data());
-
-        const postsSnap = await getDocs(
-          query(
-            collection(db, "posts"),
-            where("authorId", "==", uid),
-            orderBy("createdAt", "desc")
-          )
-        );
-        setPosts(postsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      } catch {
-        // Handle silently
-      } finally {
-        setLoading(false);
+      await Promise.all([loadProfile(), loadPosts()]);
+      if (!isOwner && user) {
+        const f = await isFollowing(uid);
+        setFollowing(f);
       }
+      setLoading(false);
     }
     load();
-  }, [uid]);
+  }, [uid, loadProfile, loadPosts, isOwner, user, isFollowing]);
+
+  async function handleFollow() {
+    setFollowLoading(true);
+    try {
+      const result = await followUser(uid);
+      setFollowing(result);
+      await loadProfile();
+    } catch {
+      // silent
+    } finally {
+      setFollowLoading(false);
+    }
+  }
+
+  async function handleDeletePost(post) {
+    const confirmed = await alertConfirm(
+      "Delete post?",
+      "This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteDoc(doc(db, "posts", post.id));
+      setPosts((prev) => prev.filter((p) => p.id !== post.id));
+      await alertSuccess("Deleted", "Your post has been removed.");
+    } catch (err) {
+      alertError(
+        "Delete failed",
+        err.message.replace("Firebase: ", "") || "Something went wrong."
+      );
+    }
+  }
 
   usePageAnimations("profile");
 
@@ -65,7 +114,7 @@ export default function Profile() {
       <div className="page">
         <h1>Your profile isn't set up yet</h1>
         <p>
-          Go to the <a href="/home">home page</a> to complete your profile.
+          Go to the <Link to="/home">home page</Link> to complete your profile.
         </p>
       </div>
     );
@@ -102,22 +151,45 @@ export default function Profile() {
               <span className="stat-label">Following</span>
             </div>
           </div>
-          {isOwner && (
-            <div className="profile-actions">
+          <div className="profile-actions">
+            {isOwner ? (
               <button
                 className="btn"
                 onClick={() => setEditing(true)}
               >
-                <Pencil size={16} />
                 Edit profile
               </button>
-            </div>
-          )}
+            ) : (
+              user && (
+                <button
+                  className={`btn ${following ? "ghost" : "primary"}`}
+                  onClick={handleFollow}
+                  disabled={followLoading}
+                >
+                  {following ? (
+                    <>
+                      <UserMinus size={16} />
+                      Unfollow
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={16} />
+                      Follow
+                    </>
+                  )}
+                </button>
+              )
+            )}
+          </div>
         </div>
       </div>
 
       {editing && (
-        <EditProfile profile={profile} onClose={() => setEditing(false)} />
+        <EditProfile
+          profile={profile}
+          onClose={() => setEditing(false)}
+          onSaved={loadProfile}
+        />
       )}
 
       <div className="profile-posts">
@@ -132,12 +204,22 @@ export default function Profile() {
           </div>
         ) : (
           posts.map((p) => (
-            <img
-              key={p.id}
-              src={p.imageUrl}
-              alt={p.title}
-              className="grid-item"
-            />
+            <div key={p.id} className="grid-item-wrapper">
+              <img
+                src={p.imageUrl}
+                alt={p.caption || "Post"}
+                className="grid-item"
+              />
+              {isOwner && (
+                <button
+                  className="grid-item-delete"
+                  onClick={() => handleDeletePost(p)}
+                  title="Delete post"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
           ))
         )}
       </div>

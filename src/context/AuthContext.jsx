@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut,
   updateProfile,
   onAuthStateChanged,
@@ -14,13 +16,42 @@ import {
   runTransaction,
   serverTimestamp,
   getDoc,
+  getDocs,
+  query,
+  where,
+  collection,
+  increment,
 } from "firebase/firestore";
 import { auth, db } from "../firebase/config";
 
 const AuthContext = createContext();
+const googleProvider = new GoogleAuthProvider();
 
 export function useAuth() {
   return useContext(AuthContext);
+}
+
+// ── localStorage helpers ──
+function cacheGet(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, expires } = JSON.parse(raw);
+    if (expires && Date.now() > expires) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function cacheSet(key, data, ttlMs = 5 * 60 * 1000) {
+  localStorage.setItem(
+    key,
+    JSON.stringify({ data, expires: Date.now() + ttlMs })
+  );
 }
 
 export function AuthProvider({ children }) {
@@ -35,15 +66,9 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  /**
-   * Signup — just email + password. No username yet.
-   * Creates a minimal user doc that signals "profile needs setup".
-   */
+  /** Signup — email + password */
   async function signup(email, password) {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-
-    // Create a minimal profile doc — username is empty so the app
-    // knows to show the SetupProfile modal on first visit.
     await setDoc(doc(db, "users", cred.user.uid), {
       username: "",
       usernameLower: "",
@@ -52,21 +77,43 @@ export function AuthProvider({ children }) {
       profilePic: "",
       followersCount: 0,
       followingCount: 0,
+      provider: "email",
       createdAt: serverTimestamp(),
     });
-
     return cred.user;
   }
 
-  /**
-   * Claim a unique username for the current user.
-   * Called from SetupProfile after signup.
-   */
+  /** Google Sign-in */
+  async function signInWithGoogle() {
+    const result = await signInWithPopup(auth, googleProvider);
+    const u = result.user;
+
+    // Check if user doc exists, create if not
+    const userDoc = await getDoc(doc(db, "users", u.uid));
+    if (!userDoc.exists()) {
+      await setDoc(doc(db, "users", u.uid), {
+        username: "",
+        usernameLower: "",
+        email: u.email,
+        bio: "",
+        profilePic: u.photoURL || "",
+        followersCount: 0,
+        followingCount: 0,
+        provider: "google",
+        createdAt: serverTimestamp(),
+      });
+    } else if (!userDoc.data().profilePic && u.photoURL) {
+      await setDoc(doc(db, "users", u.uid), { profilePic: u.photoURL }, { merge: true });
+    }
+
+    return u;
+  }
+
+  /** Claim a unique username */
   async function claimUsername(username) {
     const clean = username.trim().toLowerCase();
     const usernameRef = doc(db, "usernames", clean);
 
-    // 1. Atomically reserve the name
     try {
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(usernameRef);
@@ -81,10 +128,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      // 2. Update the user's auth displayName
       await updateProfile(auth.currentUser, { displayName: username.trim() });
-
-      // 3. Finalize user doc + username claim
       await setDoc(
         doc(db, "users", auth.currentUser.uid),
         { username: username.trim(), usernameLower: clean },
@@ -101,43 +145,35 @@ export function AuthProvider({ children }) {
     }
   }
 
-  /**
-   * Resolve a username or email to an email address.
-   * @param {string} input — email or username
-   * @returns {Promise<string>} the email
-   */
+  /** Resolve username or email */
   async function resolveLoginInput(input) {
     const trimmed = input.trim();
     if (trimmed.includes("@")) return trimmed;
 
-    // Look up by document ID — fast & exact
     const clean = trimmed.toLowerCase();
+    const cacheKey = `user_lookup_${clean}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) return cached;
+
     const usernameSnap = await getDoc(doc(db, "usernames", clean));
-
     if (!usernameSnap.exists()) {
-      throw new Error(
-        "No account found for that username. Check your spelling or try your email."
-      );
+      throw new Error("No account found for that username.");
     }
-
     const { uid } = usernameSnap.data();
-
-    // Get the email from users/{uid}
     const userSnap = await getDoc(doc(db, "users", uid));
     if (!userSnap.exists()) {
-      throw new Error("Account data is incomplete. Please contact support.");
+      throw new Error("Account data is incomplete.");
     }
-
-    return userSnap.data().email;
+    const email = userSnap.data().email;
+    cacheSet(cacheKey, email, 10 * 60 * 1000);
+    return email;
   }
 
-  /** Login with either an email or a username. */
   async function login(identifier, password) {
     const email = await resolveLoginInput(identifier);
     return signInWithEmailAndPassword(auth, email, password);
   }
 
-  /** Send a password-reset email. Accepts email or username. */
   async function resetPassword(identifier) {
     const email = await resolveLoginInput(identifier);
     return sendPasswordResetEmail(auth, email);
@@ -147,13 +183,49 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   }
 
+  // ── Follow / Unfollow ──
+  async function followUser(targetUid) {
+    if (!user || user.uid === targetUid) return;
+    const followId = `${user.uid}_${targetUid}`;
+    const followRef = doc(db, "follows", followId);
+    const snap = await getDoc(followRef);
+
+    if (snap.exists()) {
+      // Unfollow
+      await deleteDoc(followRef);
+      await setDoc(doc(db, "users", targetUid), { followersCount: increment(-1) }, { merge: true });
+      await setDoc(doc(db, "users", user.uid), { followingCount: increment(-1) }, { merge: true });
+      return false;
+    } else {
+      // Follow
+      await setDoc(followRef, {
+        followerId: user.uid,
+        followingId: targetUid,
+        createdAt: serverTimestamp(),
+      });
+      await setDoc(doc(db, "users", targetUid), { followersCount: increment(1) }, { merge: true });
+      await setDoc(doc(db, "users", user.uid), { followingCount: increment(1) }, { merge: true });
+      return true;
+    }
+  }
+
+  async function isFollowing(targetUid) {
+    if (!user) return false;
+    const followRef = doc(db, "follows", `${user.uid}_${targetUid}`);
+    const snap = await getDoc(followRef);
+    return snap.exists();
+  }
+
   const value = {
     user,
     signup,
+    signInWithGoogle,
     login,
     claimUsername,
     resetPassword,
     logout,
+    followUser,
+    isFollowing,
     loading,
   };
 

@@ -3,11 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import { alertError, alertSuccess } from "../utils/alerts";
-import { Mail, Lock, Eye, EyeOff, UserPlus, Check, X } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, UserPlus, Check, X, Globe } from "lucide-react";
 
-// ──────────────────────────────────────
-// PASSWORD RULES
-// ──────────────────────────────────────
 const PASSWORD_RULES = [
   { test: (p) => p.length >= 8, label: "At least 8 characters" },
   { test: (p) => /[A-Z]/.test(p), label: "One uppercase letter" },
@@ -74,7 +71,8 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signup } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { signup, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const allRulesPass = useMemo(
@@ -112,6 +110,21 @@ export default function Signup() {
     }
   }
 
+  async function handleGoogleSignup() {
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      navigate("/home");
+    } catch (err) {
+      const msg = err.message.replace("Firebase: ", "");
+      if (!msg.includes("popup-closed-by-user")) {
+        alertError("Google sign-in failed", friendlyAuthError(msg));
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
   usePageAnimations("auth");
 
   return (
@@ -119,6 +132,20 @@ export default function Signup() {
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Histogram</h1>
         <h2>Create your account</h2>
+
+        <button
+          type="button"
+          className="btn google-btn"
+          onClick={handleGoogleSignup}
+          disabled={googleLoading}
+        >
+          <Globe size={18} />
+          {googleLoading ? "Signing up..." : "Continue with Google"}
+        </button>
+
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
 
         <div className="input-group">
           <input
@@ -147,7 +174,6 @@ export default function Signup() {
             className="pw-toggle"
             onClick={() => setShowPassword((v) => !v)}
             tabIndex={-1}
-            aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -171,7 +197,6 @@ export default function Signup() {
             className="pw-toggle"
             onClick={() => setShowConfirm((v) => !v)}
             tabIndex={-1}
-            aria-label={showConfirm ? "Hide password" : "Show password"}
           >
             {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>

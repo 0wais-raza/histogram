@@ -6,16 +6,16 @@ import {
   alertError,
   alertSuccess,
   alertPrompt,
-  alertLoading,
 } from "../utils/alerts";
-import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, LogIn, Globe } from "lucide-react";
 
 export default function Login() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login, resetPassword } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { login, resetPassword, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -32,6 +32,21 @@ export default function Login() {
     }
   }
 
+  async function handleGoogleLogin() {
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      navigate("/home");
+    } catch (err) {
+      const msg = err.message.replace("Firebase: ", "");
+      if (!msg.includes("popup-closed-by-user")) {
+        alertError("Google sign-in failed", friendlyAuthError(msg));
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
   async function handleForgotPassword() {
     const value = await alertPrompt(
       "Reset your password",
@@ -39,16 +54,13 @@ export default function Login() {
     );
     if (!value) return;
 
-    const toast = alertLoading("Sending reset link...");
     try {
       await resetPassword(value);
-      toast.close();
       alertSuccess(
         "Check your inbox",
         "We sent a password reset link. Check spam if you don't see it."
       );
     } catch (err) {
-      toast.close();
       alertError(
         "Could not send reset link",
         friendlyAuthError(err.message.replace("Firebase: ", ""))
@@ -63,6 +75,20 @@ export default function Login() {
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Histogram</h1>
         <h2>Log in to your account</h2>
+
+        <button
+          type="button"
+          className="btn google-btn"
+          onClick={handleGoogleLogin}
+          disabled={googleLoading}
+        >
+          <Globe size={18} />
+          {googleLoading ? "Signing in..." : "Continue with Google"}
+        </button>
+
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
 
         <div className="input-group">
           <input

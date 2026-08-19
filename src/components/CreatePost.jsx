@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   doc,
   addDoc,
@@ -7,9 +6,10 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
-import { storage, db } from "../firebase/config";
+import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
-import { alertError, alertSuccess, alertLoading } from "../utils/alerts";
+import { alertError, alertSuccess } from "../utils/alerts";
+import { uploadImage } from "../utils/uploadImage";
 import { ImagePlus, X, Send } from "lucide-react";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -52,14 +52,10 @@ export default function CreatePost({ onClose, onCreated }) {
     if (!file) return alertError("No image", "Please select an image to post.");
 
     setUploading(true);
-    const toast = alertLoading("Posting...");
 
     try {
-      // 1. Upload image
-      const timestamp = Date.now();
-      const storageRef = ref(storage, `posts/${user.uid}/${timestamp}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const imageUrl = await getDownloadURL(storageRef);
+      // 1. Upload image to imgbb
+      const imageUrl = await uploadImage(file);
 
       // 2. Create post doc
       const postRef = await addDoc(collection(db, "posts"), {
@@ -75,12 +71,10 @@ export default function CreatePost({ onClose, onCreated }) {
       // 3. Update with its own ID
       await updateDoc(doc(db, "posts", postRef.id), { postId: postRef.id });
 
-      toast.close();
-      await alertSuccess("Posted!", "Your photo has been shared.");
       onCreated?.();
       onClose();
+      await alertSuccess("Posted!", "Your photo has been shared.");
     } catch (err) {
-      toast.close();
       alertError(
         "Upload failed",
         err.message.replace("Firebase: ", "") || "Something went wrong."
@@ -120,7 +114,7 @@ export default function CreatePost({ onClose, onCreated }) {
             className="create-post-dropzone"
             onClick={() => fileRef.current?.click()}
           >
-            <ImagePlus size={40} strokeWidth={1.5} />
+            <ImagePlus size={36} strokeWidth={1.5} />
             <p>Click to select a photo</p>
             <span>JPEG, PNG, GIF, or WebP — max {MAX_SIZE_MB} MB</span>
           </div>
@@ -137,7 +131,7 @@ export default function CreatePost({ onClose, onCreated }) {
         <textarea
           className="create-post-caption"
           placeholder="Write a caption..."
-          rows={3}
+          rows={2}
           maxLength={2200}
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
@@ -149,8 +143,17 @@ export default function CreatePost({ onClose, onCreated }) {
           className="btn primary create-post-submit"
           disabled={uploading || !file}
         >
-          <Send size={16} />
-          {uploading ? "Posting..." : "Share"}
+          {uploading ? (
+            <span className="setup-btn-loading">
+              <span className="setup-btn-spinner" />
+              Posting...
+            </span>
+          ) : (
+            <>
+              <Send size={16} />
+              Share
+            </>
+          )}
         </button>
       </form>
     </div>

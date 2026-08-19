@@ -4,7 +4,7 @@
 
 .landing-page {
   width: 100%;
-  min-height: 100vh;
+  min-height: 95vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -60,8 +60,8 @@
 }
 
 .hero-img {
-  width: 100px;
-  height: 100px;
+  width: 200px;
+  height: 200px;
   object-fit: cover;
   border-radius: 50%;
   border: 2px solid var(--border);

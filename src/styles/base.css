@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════
-   Histogram — Dark Theme (Subtle Cyber)
+   Histogram — Liquid Glass Theme
    ════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -16,7 +16,7 @@
   --border: rgba(134, 59, 255, 0.12);
   --border-glow: rgba(134, 59, 255, 0.25);
 
-  /* ── Brand Colors (from logo) ── */
+  /* ── Brand Colors ── */
   --accent: #863bff;
   --accent-bright: #a855f7;
   --accent-deep: #7e14ff;
@@ -25,6 +25,14 @@
   --neon-purple: #c084fc;
   --neon-pink: #f472b6;
   --neon-green: #34d399;
+
+  /* ── Liquid Glass ── */
+  --glass-bg: rgba(20, 20, 42, 0.45);
+  --glass-bg-heavy: rgba(20, 20, 42, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
+  --glass-blur: 20px;
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
   /* ── Subtle Shadows ── */
   --glow-sm: 0 0 12px rgba(134, 59, 255, 0.15);
@@ -72,20 +80,19 @@ body {
   position: relative;
 }
 
-/* ── Very subtle grid — static, no animation ── */
+/* ── Background orbs for glass refraction ── */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(134, 59, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(134, 59, 255, 0.02) 1px, transparent 1px);
-  background-size: 60px 60px;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 30%, rgba(134, 59, 255, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 500px at 80% 70%, rgba(71, 191, 255, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 300px at 50% 50%, rgba(192, 132, 252, 0.04) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
 
-/* Hide body grid when landing page is active */
 body.landing-active::before {
   display: none;
 }
@@ -137,4 +144,53 @@ a:hover {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ════════════════════════════════════════
+   Liquid Glass Utility Classes
+   ════════════════════════════════════════ */
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-heavy {
+  background: var(--glass-bg-heavy);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Glass shimmer animation ── */
+@keyframes glassShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.glass-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.03) 45%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.03) 55%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: glassShimmer 6s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
 }

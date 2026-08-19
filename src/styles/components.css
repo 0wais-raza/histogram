@@ -7,10 +7,11 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  background: rgba(10, 10, 18, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 24px rgba(0,0,0,0.2);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -18,7 +19,10 @@
 
 .navbar-landing {
   background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border-bottom: 1px solid rgba(134, 59, 255, 0.06);
+  box-shadow: none;
 }
 
 /* ── Logo ── */
@@ -62,6 +66,13 @@
 .nav-btn {
   padding: 8px 16px !important;
   font-size: 13px !important;
+}
+
+/* ── Nav New Post Button ── */
+.nav-new-post-btn {
+  padding: 7px 14px !important;
+  font-size: 13px !important;
+  border-radius: var(--radius-sm) !important;
 }
 
 /* ── Avatar Button ── */
@@ -120,10 +131,12 @@
   top: calc(100% + 8px);
   right: 0;
   width: 240px;
-  background: var(--card-solid);
-  border: 1px solid var(--border);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.06);
   z-index: 60;
   overflow: hidden;
   animation: dropdownIn 0.15s var(--ease-out);
@@ -238,8 +251,10 @@
 }
 
 .auth-card {
-  background: var(--card-solid);
-  border: 1px solid var(--border);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   padding: 40px 36px;
   width: 100%;
@@ -249,6 +264,7 @@
   gap: 16px;
   position: relative;
   z-index: 1;
+  box-shadow: var(--glass-shadow), 0 0 60px rgba(134, 59, 255, 0.06);
 }
 
 .auth-card h1 {
@@ -325,6 +341,36 @@
   cursor: not-allowed;
 }
 
+/* ── Google Button ── */
+.google-btn {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text) !important;
+  font-weight: 500 !important;
+}
+
+.google-btn:hover {
+  background: rgba(255,255,255,0.1) !important;
+  border-color: rgba(255,255,255,0.15) !important;
+}
+
+/* ── Auth Divider ── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 /* ════════════════════════════════════════
    Buttons
    ════════════════════════════════════════ */
@@ -336,8 +382,10 @@
   gap: 8px;
   padding: 12px 24px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--card);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--text);
   font-weight: 600;
   font-size: 14px;
@@ -579,8 +627,10 @@
 }
 
 .modal {
-  background: var(--card-solid);
-  border: 1px solid var(--border);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   padding: 32px;
   width: 100%;
@@ -591,6 +641,7 @@
   flex-direction: column;
   gap: 14px;
   position: relative;
+  box-shadow: var(--glass-shadow), 0 0 60px rgba(134, 59, 255, 0.06);
 }
 
 .modal h3 {
@@ -651,6 +702,91 @@
   max-width: 460px;
 }
 
+.setup-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── Avatar Picker (Setup + Edit) ── */
+.setup-avatar-picker,
+.edit-avatar-picker {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.setup-avatar-ring,
+.edit-avatar-ring {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  cursor: pointer;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  transition: border-color 0.2s var(--ease-out);
+}
+
+.setup-avatar-ring:hover,
+.edit-avatar-ring:hover {
+  border-color: var(--accent);
+}
+
+.setup-avatar-img,
+.edit-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.setup-avatar-placeholder,
+.edit-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: rgba(134, 59, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.setup-avatar-overlay,
+.edit-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out);
+  border-radius: 50%;
+}
+
+.setup-avatar-ring:hover .setup-avatar-overlay,
+.edit-avatar-ring:hover .edit-avatar-overlay {
+  opacity: 1;
+}
+
+.setup-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ════════════════════════════════════════
+   Edit Profile Modal
+   ════════════════════════════════════════ */
+
+.modal-actions {
+  gap: 8px;
+}
+
 /* ════════════════════════════════════════
    Error
    ════════════════════════════════════════ */
@@ -665,7 +801,7 @@
 }
 
 /* ════════════════════════════════════════
-   Responsive — Mobile (≤640px)
+   Responsive — Mobile
    ════════════════════════════════════════ */
 
 @media (max-width: 640px) {
@@ -680,6 +816,19 @@
   .nav-btn {
     padding: 7px 12px !important;
     font-size: 12px !important;
+  }
+
+  .nav-new-post-btn {
+    padding: 6px 10px !important;
+    font-size: 0 !important;
+    border-radius: 50% !important;
+    width: 34px;
+    height: 34px;
+    padding: 0 !important;
+  }
+
+  .nav-new-post-text {
+    display: none;
   }
 
   .nav-dropdown {

@@ -1,24 +1,22 @@
-import { useState } from "react";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useState, useRef } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { storage, db } from "../firebase/config";
+import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
-import { alertError, alertSuccess, alertLoading } from "../utils/alerts";
-import { Save, X, User } from "lucide-react";
+import { alertError, alertSuccess } from "../utils/alerts";
+import { uploadImage } from "../utils/uploadImage";
+import { Save, X, Camera } from "lucide-react";
 
 const MAX_BIO = 150;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 5;
 
-export default function EditProfile({ profile, onClose }) {
-  const { user, claimUsername } = useAuth();
-  const [username, setUsername] = useState(profile.username || "");
+export default function EditProfile({ profile, onClose, onSaved }) {
+  const { user } = useAuth();
   const [bio, setBio] = useState(profile.bio || "");
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(profile.profilePic || "");
   const [uploading, setUploading] = useState(false);
-
-  const hasUsername = !!profile.username;
+  const fileRef = useRef(null);
 
   function handleFileChange(e) {
     const f = e.target.files[0];
@@ -42,37 +40,21 @@ export default function EditProfile({ profile, onClose }) {
     e.preventDefault();
     setUploading(true);
 
-    const toast = alertLoading("Saving profile...");
     try {
-      if (
-        hasUsername &&
-        username.trim().toLowerCase() !== profile.username.toLowerCase()
-      ) {
-        await claimUsername(username);
-      }
-
       let profilePic = profile.profilePic || "";
       if (file) {
-        const storageRef = ref(storage, `profilePics/${user.uid}`);
-        await uploadBytes(storageRef, file);
-        profilePic = await getDownloadURL(storageRef);
+        profilePic = await uploadImage(file);
       }
 
-      const updateData = { bio: bio.trim(), profilePic };
-      if (
-        hasUsername &&
-        username.trim().toLowerCase() !== profile.username.toLowerCase()
-      ) {
-        updateData.username = username.trim();
-        updateData.usernameLower = username.trim().toLowerCase();
-      }
+      await updateDoc(doc(db, "users", user.uid), {
+        bio: bio.trim(),
+        profilePic,
+      });
 
-      await updateDoc(doc(db, "users", user.uid), updateData);
-      toast.close();
-      await alertSuccess("Profile updated!", "Your changes are saved.");
+      await alertSuccess("Profile updated!", "Your changes have been saved.");
+      onSaved?.();
       onClose();
     } catch (err) {
-      toast.close();
       alertError(
         "Update failed",
         err.message.replace("Firebase: ", "") || "Something went wrong."
@@ -89,32 +71,38 @@ export default function EditProfile({ profile, onClose }) {
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
-        <h3>
-          <User size={20} style={{ verticalAlign: "middle", marginRight: 8 }} />
-          Edit profile
-        </h3>
+        <div className="create-post-header">
+          <h3>Edit profile</h3>
+          <button type="button" className="btn icon-only" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
 
-        {hasUsername && (
-          <>
-            <label className="muted">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Your username"
-            />
-          </>
-        )}
-
-        <label className="muted">Profile picture</label>
-        {preview && (
-          <img src={preview} alt="Preview" className="avatar-preview" />
-        )}
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          onChange={handleFileChange}
-        />
+        {/* ── Avatar picker ── */}
+        <div className="edit-avatar-picker">
+          <div
+            className="edit-avatar-ring"
+            onClick={() => fileRef.current?.click()}
+          >
+            {preview ? (
+              <img src={preview} alt="Preview" className="edit-avatar-img" />
+            ) : (
+              <div className="edit-avatar-placeholder">
+                <Camera size={24} />
+              </div>
+            )}
+            <div className="edit-avatar-overlay">
+              <Camera size={16} />
+            </div>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
+        </div>
 
         <label className="muted">Bio (max {MAX_BIO})</label>
         <textarea
@@ -133,8 +121,17 @@ export default function EditProfile({ profile, onClose }) {
             Cancel
           </button>
           <button className="btn primary" disabled={uploading}>
-            <Save size={16} />
-            {uploading ? "Saving..." : "Save"}
+            {uploading ? (
+              <span className="setup-btn-loading">
+                <span className="setup-btn-spinner" />
+                Saving...
+              </span>
+            ) : (
+              <>
+                <Save size={16} />
+                Save
+              </>
+            )}
           </button>
         </div>
       </form>
