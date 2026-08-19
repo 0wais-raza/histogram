@@ -15,7 +15,6 @@ export const pageAnimations = {
     { selector: ".hero h1", y: 20, opacity: 0, duration: 0.4, delay: 0.1, ease: "power2.out" },
     { selector: ".hero p", y: 15, opacity: 0, duration: 0.4, delay: 0.2, ease: "power2.out" },
     { selector: ".hero-actions", y: 15, opacity: 0, duration: 0.35, delay: 0.3, ease: "power2.out" },
-    { selector: ".feature-card", y: 20, opacity: 0, duration: 0.35, stagger: 0.06, delay: 0.4, ease: "power2.out" },
   ],
   home: [
     { selector: ".home-welcome", y: 15, opacity: 0, duration: 0.4, ease: "power2.out" },

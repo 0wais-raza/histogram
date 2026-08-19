@@ -1,44 +1,22 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
-import {
-  Camera,
-  Users,
-  Shield,
-  Sparkles,
-  ArrowRight,
-} from "lucide-react";
-
-const features = [
-  {
-    icon: Camera,
-    title: "Share Moments",
-    desc: "Capture and share your best photos with the world in stunning quality.",
-  },
-  {
-    icon: Users,
-    title: "Follow Friends",
-    desc: "Stay connected with your friends and see what they're up to.",
-  },
-  {
-    icon: Shield,
-    title: "Privacy First",
-    desc: "Your data is secure with Firebase authentication and encryption.",
-  },
-  {
-    icon: Sparkles,
-    title: "Beautiful Feed",
-    desc: "A sleek, modern feed designed for an amazing viewing experience.",
-  },
-];
+import { ArrowRight } from "lucide-react";
 
 export default function Landing() {
   const { user } = useAuth();
   usePageAnimations("landing");
 
+  useEffect(() => {
+    document.body.classList.add("landing-active");
+    return () => document.body.classList.remove("landing-active");
+  }, []);
+
   return (
-    <div className="landing">
-      <section className="hero">
+    <div className="landing-page">
+      <div className="landing-glow" />
+      <div className="hero">
         <div className="hero-img-wrapper">
           <img src="/histogram.png" alt="Histogram logo" className="hero-img" />
         </div>
@@ -65,19 +43,7 @@ export default function Landing() {
             </div>
           )}
         </div>
-
-        <div className="features">
-          {features.map((f, i) => (
-            <div key={i} className="feature-card">
-              <div className="feature-icon">
-                <f.icon size={24} />
-              </div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

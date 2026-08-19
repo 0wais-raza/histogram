@@ -85,6 +85,11 @@ body::before {
   z-index: 0;
 }
 
+/* Hide body grid when landing page is active */
+body.landing-active::before {
+  display: none;
+}
+
 /* ── Global Link Styles ── */
 a {
   color: var(--cyan);

@@ -70,9 +70,8 @@ export default function Home() {
 
   if (checking) {
     return (
-      <div className="loading">
-        <div className="loading-spinner" />
-        <span>Loading...</span>
+      <div className="page">
+        <FeedSkeleton />
       </div>
     );
   }

@@ -14,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import EditProfile from "../components/EditProfile";
 import { ImageIcon, Pencil } from "lucide-react";
+import { ProfileSkeleton } from "../components/LoadingSkeleton";
 
 export default function Profile() {
   const { uid } = useParams();
@@ -52,9 +53,8 @@ export default function Profile() {
 
   if (loading)
     return (
-      <div className="loading">
-        <div className="loading-spinner" />
-        <span>Loading...</span>
+      <div className="page">
+        <ProfileSkeleton />
       </div>
     );
 

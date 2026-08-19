@@ -6,16 +6,24 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 28px;
+  padding: 12px 24px;
   background: rgba(10, 10, 18, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 50;
 }
 
+.navbar-landing {
+  background: transparent;
+  border-bottom: 1px solid rgba(134, 59, 255, 0.06);
+}
+
+/* ── Logo ── */
 .logo {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.5px;
   color: var(--text);
@@ -34,58 +42,185 @@
   color: var(--accent-bright);
 }
 
-.logo svg,
-.logo img {
-  height: 24px;
-  width: 24px;
-  flex-shrink: 0;
+.logo-text {
+  display: inline;
 }
 
-.nav-links {
+/* ── Nav Right ── */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-auth-links {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-.nav-links a,
-.nav-links button {
+.nav-btn {
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+}
+
+/* ── Avatar Button ── */
+.nav-avatar-wrapper {
+  position: relative;
+}
+
+.nav-avatar-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  transition: all 0.2s var(--ease-out);
-  border: 1px solid transparent;
+  padding: 4px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
   background: transparent;
   cursor: pointer;
-  font-family: inherit;
-  text-decoration: none;
+  transition: border-color 0.2s var(--ease-out);
 }
 
-.nav-links a:hover,
-.nav-links button:hover {
-  color: var(--text);
-  background: rgba(134, 59, 255, 0.08);
-  border-color: var(--border);
+.nav-avatar-btn:hover {
+  border-color: var(--border-glow);
 }
 
-.nav-links a.active {
+.nav-avatar-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.nav-avatar-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(134, 59, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
   color: var(--accent-bright);
-  background: rgba(134, 59, 255, 0.1);
-  border-color: rgba(134, 59, 255, 0.2);
 }
 
-.nav-links .nav-btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-  color: #fff !important;
+.nav-avatar-chevron {
+  color: var(--text-secondary);
+  transition: transform 0.2s var(--ease-out);
+}
+
+.nav-avatar-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* ── Dropdown Menu ── */
+.nav-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  z-index: 60;
+  overflow: hidden;
+  animation: dropdownIn 0.15s var(--ease-out);
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.nav-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.nav-dropdown-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.nav-dropdown-avatar-fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(134, 59, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--accent-bright);
+  flex-shrink: 0;
+}
+
+.nav-dropdown-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nav-dropdown-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-dropdown-email {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0;
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
   border: none;
+  background: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s var(--ease-out);
 }
 
-.nav-links .nav-btn-primary:hover {
-  opacity: 0.9;
+.nav-dropdown-item:hover {
+  background: rgba(134, 59, 255, 0.08);
+  color: var(--text);
+}
+
+.nav-dropdown-logout {
+  color: var(--error);
+}
+
+.nav-dropdown-logout:hover {
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--error);
 }
 
 /* ════════════════════════════════════════
@@ -422,15 +557,6 @@
   z-index: 1;
 }
 
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: rotateGlow 0.8s linear infinite;
-}
-
 /* ════════════════════════════════════════
    Modal
    ════════════════════════════════════════ */
@@ -547,18 +673,33 @@
     padding: 10px 16px;
   }
 
-  .logo {
-    font-size: 18px;
+  .logo-text {
+    display: none;
   }
 
-  .nav-links {
-    gap: 4px;
+  .nav-btn {
+    padding: 7px 12px !important;
+    font-size: 12px !important;
   }
 
-  .nav-links a,
-  .nav-links button {
-    padding: 6px 10px;
-    font-size: 13px;
+  .nav-dropdown {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    animation: dropdownUp 0.2s var(--ease-out);
+  }
+
+  @keyframes dropdownUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .nav-dropdown-header {
+    padding: 16px;
   }
 
   .auth-card {
@@ -590,11 +731,5 @@
 
   .modal-actions .btn {
     width: 100%;
-  }
-}
-
-@media (min-width: 641px) and (max-width: 768px) {
-  .nav-links {
-    gap: 8px;
   }
 }
