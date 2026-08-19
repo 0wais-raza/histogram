@@ -7,6 +7,8 @@ import {
   limit,
   getDocs,
   where,
+  doc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -30,11 +32,29 @@ export default function Explore() {
           limit(50)
         );
         const snap = await getDocs(q);
-        setUsers(
-          snap.docs
-            .map((d) => ({ uid: d.id, ...d.data() }))
-            .filter((u) => u.uid !== user?.uid)
-        );
+        
+        // Filter: must have a username, must have a user doc, must not be current user
+        const validUsers = [];
+        for (const d of snap.docs) {
+          const data = d.data();
+          // Skip if no username, or if the username entry in usernames collection doesn't exist
+          if (!data.username || !data.usernameLower) continue;
+          
+          // Verify the user actually has a valid username claim in the usernames collection
+          try {
+            const usernameSnap = await getDoc(doc(db, "usernames", data.usernameLower));
+            if (!usernameSnap.exists()) continue;
+            const usernameData = usernameSnap.data();
+            // Skip if username is not linked to this user or not active
+            if (usernameData.uid !== d.id || usernameData.status !== "active") continue;
+          } catch {
+            continue;
+          }
+          
+          validUsers.push({ uid: d.id, ...data });
+        }
+        
+        setUsers(validUsers.filter((u) => u.uid !== user?.uid));
       } catch {
         // silent
       } finally {

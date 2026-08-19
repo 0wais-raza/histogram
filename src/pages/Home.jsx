@@ -16,7 +16,7 @@ import { staticPosts } from "../config/posts";
 import {
   ExternalLink, Trash2, Pencil, MoreHorizontal,
   Heart, Bookmark, MessageCircle, Share2,
-  ChevronLeft, ChevronRight, UserPlus, UserMinus,
+  ChevronLeft, ChevronRight, UserPlus, UserMinus, Music, Volume2, VolumeX,
 } from "lucide-react";
 import { alertConfirm, alertError, alertPrompt } from "../utils/alerts";
 
@@ -318,6 +318,19 @@ export default function Home() {
                 )}
 
                 {post.caption && <p className="feed-post-caption">{post.caption}</p>}
+
+                {/* Music */}
+                {post.musicName && (
+                  <div className="feed-post-music">
+                    <div className="feed-post-music-icon">
+                      <Music size={14} />
+                    </div>
+                    <div className="feed-post-music-info">
+                      <span className="feed-post-music-name">{post.musicName}</span>
+                      <span className="feed-post-music-artist">{post.musicArtist}</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="feed-post-actions">

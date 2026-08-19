@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Navbar from "./components/Navbar";
+import Sidebar from "./components/Sidebar";
 import PageTransition from "./components/PageTransition";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -12,28 +12,44 @@ import Profile from "./pages/Profile";
 import Explore from "./pages/Explore";
 import Followers from "./pages/Followers";
 import Saved from "./pages/Saved";
+import Discover from "./pages/Discover";
+import Reels from "./pages/Reels";
+import Music from "./pages/Music";
+import Notifications from "./pages/Notifications";
+import Messages from "./pages/Messages";
+import SearchPage from "./pages/SearchPage";
 
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Navbar />
-          <PageTransition>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="/home" element={<Home />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/profile/:uid" element={<Profile />} />
-                <Route path="/profile/:uid/followers" element={<Followers />} />
-                <Route path="/saved" element={<Saved />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </PageTransition>
+          <div className="app-layout">
+            <Sidebar />
+            <main className="app-main">
+              <PageTransition>
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/discover" element={<Discover />} />
+                    <Route path="/reels" element={<Reels />} />
+                    <Route path="/music" element={<Music />} />
+                    <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/messages" element={<Messages />} />
+                    <Route path="/search" element={<SearchPage />} />
+                    <Route path="/profile/:uid" element={<Profile />} />
+                    <Route path="/profile/:uid/followers" element={<Followers />} />
+                    <Route path="/saved" element={<Saved />} />
+                  </Route>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </PageTransition>
+            </main>
+          </div>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

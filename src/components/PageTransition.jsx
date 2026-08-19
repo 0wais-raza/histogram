@@ -35,7 +35,7 @@ export default function PageTransition({ children }) {
   }, [location.pathname]);
 
   return (
-    <div ref={ref} style={{ minHeight: "calc(100vh - 60px)" }}>
+    <div ref={ref} style={{ minHeight: "100vh" }}>
       {children}
     </div>
   );

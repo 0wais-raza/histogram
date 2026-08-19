@@ -8,11 +8,22 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { alertError } from "../utils/alerts";
 import { uploadImage } from "../utils/uploadImage";
-import { ImagePlus, X, Send, ChevronLeft, ChevronRight } from "lucide-react";
+import { ImagePlus, X, Send, ChevronLeft, ChevronRight, Music, Volume2, VolumeX } from "lucide-react";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
 const MAX_IMAGES = 5;
+
+const MUSIC_SUGGESTIONS = [
+  { id: "m1", name: "Chill Vibes", artist: "Lo-Fi Beats" },
+  { id: "m2", name: "Sunset Drive", artist: "Synthwave" },
+  { id: "m3", name: "Midnight Rain", artist: "Ambient" },
+  { id: "m4", name: "Electric Dreams", artist: "Electronic" },
+  { id: "m5", name: "Morning Coffee", artist: "Jazz Hop" },
+  { id: "m6", name: "City Lights", artist: "R&B" },
+  { id: "m7", name: "Summer Breeze", artist: "Tropical" },
+  { id: "m8", name: "Neon Nights", artist: "Retrowave" },
+];
 
 export default function CreatePost({ onClose, onCreated }) {
   const { user } = useAuth();
@@ -22,6 +33,10 @@ export default function CreatePost({ onClose, onCreated }) {
   const [uploading, setUploading] = useState(false);
   const [sliderIdx, setSliderIdx] = useState(0);
   const [uploadProgress, setUploadProgress] = useState("");
+  const [selectedMusic, setSelectedMusic] = useState(null);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [showMusicPicker, setShowMusicPicker] = useState(false);
+  const [musicSearch, setMusicSearch] = useState("");
   const fileRef = useRef(null);
 
   // Lock body scroll
@@ -85,7 +100,7 @@ export default function CreatePost({ onClose, onCreated }) {
         }
       }
 
-      await addDoc(collection(db, "posts"), {
+      const postData = {
         authorId: user.uid,
         authorName: user.displayName || user.email,
         imageUrls,
@@ -94,7 +109,16 @@ export default function CreatePost({ onClose, onCreated }) {
         likesCount: 0,
         commentsCount: 0,
         createdAt: serverTimestamp(),
-      });
+      };
+
+      // Add music data if selected
+      if (selectedMusic && musicEnabled) {
+        postData.musicName = selectedMusic.name;
+        postData.musicArtist = selectedMusic.artist;
+        postData.musicId = selectedMusic.id;
+      }
+
+      await addDoc(collection(db, "posts"), postData);
 
       onCreated?.();
       handleClose();
@@ -110,6 +134,12 @@ export default function CreatePost({ onClose, onCreated }) {
   }
 
   const canSubmit = caption.trim() || files.length > 0;
+
+  const filteredMusic = MUSIC_SUGGESTIONS.filter(
+    (m) =>
+      m.name.toLowerCase().includes(musicSearch.toLowerCase()) ||
+      m.artist.toLowerCase().includes(musicSearch.toLowerCase())
+  );
 
   return (
     <div className="modal-backdrop" onClick={handleClose}>
@@ -184,6 +214,59 @@ export default function CreatePost({ onClose, onCreated }) {
           onChange={handleFileChange}
           style={{ display: "none" }}
         />
+
+        {/* Music Section */}
+        <div className="create-post-music-section">
+          <button
+            type="button"
+            className="create-post-music-btn"
+            onClick={() => setShowMusicPicker(!showMusicPicker)}
+          >
+            <Music size={16} />
+            {selectedMusic ? `🎵 ${selectedMusic.name}` : "Add music"}
+          </button>
+          
+          {selectedMusic && (
+            <button
+              type="button"
+              className={`create-post-music-toggle ${musicEnabled ? "active" : ""}`}
+              onClick={() => setMusicEnabled(!musicEnabled)}
+              title={musicEnabled ? "Music on" : "Music off"}
+            >
+              {musicEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
+          )}
+        </div>
+
+        {showMusicPicker && (
+          <div className="music-picker">
+            <input
+              type="text"
+              placeholder="Search music..."
+              value={musicSearch}
+              onChange={(e) => setMusicSearch(e.target.value)}
+              className="music-picker-search"
+            />
+            <div className="music-picker-list">
+              {filteredMusic.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`music-picker-item ${selectedMusic?.id === m.id ? "selected" : ""}`}
+                  onClick={() => {
+                    setSelectedMusic(selectedMusic?.id === m.id ? null : m);
+                    setShowMusicPicker(false);
+                    setMusicSearch("");
+                  }}
+                >
+                  <Music size={14} />
+                  <span className="music-picker-name">{m.name}</span>
+                  <span className="music-picker-artist">{m.artist}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button
           type="submit"

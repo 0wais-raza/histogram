@@ -105,6 +105,7 @@ export default function Signup() {
     } catch (err) {
       const msg = err.message.replace("Firebase: ", "");
       alertError("Signup failed", friendlyAuthError(msg));
+      setTimeout(() => navigate("/"), 2000);
     } finally {
       setLoading(false);
     }
@@ -119,6 +120,7 @@ export default function Signup() {
       const msg = err.message.replace("Firebase: ", "");
       if (!msg.includes("popup-closed-by-user")) {
         alertError("Google sign-in failed", friendlyAuthError(msg));
+        setTimeout(() => navigate("/"), 2000);
       }
     } finally {
       setGoogleLoading(false);

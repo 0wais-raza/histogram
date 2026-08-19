@@ -22,6 +22,8 @@ export default function Profile() {
   const [following, setFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const isOwner = user?.uid === uid;
+  const [realFollowerCount, setRealFollowerCount] = useState(null);
+  const [realFollowingCount, setRealFollowingCount] = useState(null);
 
   // ── Realtime profile ──
   useEffect(() => {
@@ -40,6 +42,19 @@ export default function Profile() {
       setPosts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return unsub;
+  }, [uid]);
+
+  // ── Realtime follower/following count ──
+  useEffect(() => {
+    const followersQ = query(collection(db, "follows"), where("followingId", "==", uid));
+    const unsubF = onSnapshot(followersQ, (snap) => {
+      setRealFollowerCount(snap.size);
+    }, () => {});
+    const followingQ = query(collection(db, "follows"), where("followerId", "==", uid));
+    const unsubG = onSnapshot(followingQ, (snap) => {
+      setRealFollowingCount(snap.size);
+    }, () => {});
+    return () => { unsubF(); unsubG(); };
   }, [uid]);
 
   // ── Realtime follow check ──
@@ -80,8 +95,8 @@ export default function Profile() {
           <p className="bio">{profile.bio || "No bio yet."}</p>
           <div className="stats">
             <div className="stat-item"><span className="stat-value">{posts.length}</span><span className="stat-label">Posts</span></div>
-            <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{profile.followersCount ?? 0}</span><span className="stat-label">Followers</span></Link>
-            <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{profile.followingCount ?? 0}</span><span className="stat-label">Following</span></Link>
+            <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{realFollowerCount ?? profile.followersCount ?? 0}</span><span className="stat-label">Followers</span></Link>
+            <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{realFollowingCount ?? profile.followingCount ?? 0}</span><span className="stat-label">Following</span></Link>
           </div>
           <div className="profile-actions">
             {isOwner ? (

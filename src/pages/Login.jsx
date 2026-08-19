@@ -27,6 +27,8 @@ export default function Login() {
     } catch (err) {
       const msg = err.message.replace("Firebase: ", "");
       alertError("Login failed", friendlyAuthError(msg));
+      // Don't leave user stuck — redirect to home after error
+      setTimeout(() => navigate("/"), 2000);
     } finally {
       setLoading(false);
     }
@@ -41,6 +43,7 @@ export default function Login() {
       const msg = err.message.replace("Firebase: ", "");
       if (!msg.includes("popup-closed-by-user")) {
         alertError("Google sign-in failed", friendlyAuthError(msg));
+        setTimeout(() => navigate("/"), 2000);
       }
     } finally {
       setGoogleLoading(false);
