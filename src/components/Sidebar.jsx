@@ -21,6 +21,7 @@ import {
   Sun,
   Moon,
   Settings,
+  Music,
 } from "lucide-react";
 
 export default function Sidebar() {

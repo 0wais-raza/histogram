@@ -37,7 +37,9 @@ export const pageAnimations = {
 
 export function runPageAnimations(pageKey) {
   const steps = pageAnimations[pageKey] || [];
-  steps.forEach(({ selector, ...vars }) => gsap.from(selector, vars));
+  steps.forEach(({ selector, ...vars }) => {
+    if (document.querySelector(selector)) gsap.from(selector, vars);
+  });
 }
 
 export function usePageAnimations(pageKey) {
