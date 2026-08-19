@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   doc,
   addDoc,
@@ -8,84 +8,113 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
-import { alertError, alertSuccess } from "../utils/alerts";
+import { alertError } from "../utils/alerts";
 import { uploadImage } from "../utils/uploadImage";
-import { ImagePlus, X, Send } from "lucide-react";
+import { ImagePlus, X, Send, ChevronLeft, ChevronRight } from "lucide-react";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
+const MAX_IMAGES = 5;
 
 export default function CreatePost({ onClose, onCreated }) {
   const { user } = useAuth();
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState("");
+  const [files, setFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [sliderIdx, setSliderIdx] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState("");
   const fileRef = useRef(null);
 
-  function handleFileChange(e) {
-    const f = e.target.files[0];
-    if (!f) return;
+  // Lock body scroll
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
-    if (!ALLOWED_TYPES.includes(f.type)) {
-      return alertError(
-        "Invalid file type",
-        "Please upload a JPEG, PNG, GIF, or WebP image."
-      );
-    }
-    if (f.size > MAX_SIZE_MB * 1024 * 1024) {
-      return alertError("File too large", `Image must be under ${MAX_SIZE_MB} MB.`);
-    }
-
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
+  function handleClose() {
+    document.body.style.overflow = "";
+    onClose();
   }
 
-  function handleRemoveImage() {
-    setFile(null);
-    setPreview("");
+  function handleFileChange(e) {
+    const selected = Array.from(e.target.files || []);
+    const remaining = MAX_IMAGES - files.length;
+    const toAdd = selected.slice(0, remaining);
+
+    const valid = [];
+    for (const f of toAdd) {
+      if (!ALLOWED_TYPES.includes(f.type)) {
+        alertError("Invalid type", `${f.name} is not a supported image type.`);
+        continue;
+      }
+      if (f.size > MAX_SIZE_MB * 1024 * 1024) {
+        alertError("Too large", `${f.name} must be under ${MAX_SIZE_MB} MB.`);
+        continue;
+      }
+      valid.push(f);
+    }
+
+    if (valid.length) {
+      setFiles((prev) => [...prev, ...valid]);
+      setPreviews((prev) => [...prev, ...valid.map((f) => URL.createObjectURL(f))]);
+    }
     if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function removeImage(idx) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+    setPreviews((prev) => prev.filter((_, i) => i !== idx));
+    if (sliderIdx >= idx && sliderIdx > 0) setSliderIdx((s) => s - 1);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!file) return alertError("No image", "Please select an image to post.");
+    const text = caption.trim();
+    if (!text && files.length === 0) {
+      return alertError("Empty post", "Write something or add a photo.");
+    }
 
     setUploading(true);
 
     try {
-      // 1. Upload image to imgbb
-      const imageUrl = await uploadImage(file);
+      let imageUrls = [];
+      if (files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          setUploadProgress(`Uploading ${i + 1} of ${files.length}...`);
+          const url = await uploadImage(files[i]);
+          imageUrls.push(url);
+        }
+      }
 
-      // 2. Create post doc
-      const postRef = await addDoc(collection(db, "posts"), {
+      await addDoc(collection(db, "posts"), {
         authorId: user.uid,
         authorName: user.displayName || user.email,
-        imageUrl,
-        caption: caption.trim(),
+        imageUrls,
+        imageUrl: imageUrls[0] || "",
+        caption: text,
         likesCount: 0,
         commentsCount: 0,
         createdAt: serverTimestamp(),
       });
 
-      // 3. Update with its own ID
-      await updateDoc(doc(db, "posts", postRef.id), { postId: postRef.id });
-
       onCreated?.();
-      onClose();
-      await alertSuccess("Posted!", "Your photo has been shared.");
+      handleClose();
     } catch (err) {
       alertError(
-        "Upload failed",
+        "Post failed",
         err.message.replace("Firebase: ", "") || "Something went wrong."
       );
     } finally {
       setUploading(false);
+      setUploadProgress("");
     }
   }
 
+  const canSubmit = caption.trim() || files.length > 0;
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={handleClose}>
       <form
         className="modal create-post-modal"
         onClick={(e) => e.stopPropagation()}
@@ -93,60 +122,80 @@ export default function CreatePost({ onClose, onCreated }) {
       >
         <div className="create-post-header">
           <h3>New Post</h3>
-          <button type="button" className="btn icon-only" onClick={onClose}>
+          <button type="button" className="btn icon-only" onClick={handleClose}>
             <X size={20} />
           </button>
         </div>
 
-        {preview ? (
-          <div className="create-post-preview">
-            <img src={preview} alt="Preview" />
-            <button
-              type="button"
-              className="create-post-remove"
-              onClick={handleRemoveImage}
-            >
-              <X size={16} />
-            </button>
+        <textarea
+          className="create-post-caption"
+          placeholder="What's on your mind?"
+          rows={3}
+          maxLength={2200}
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          autoFocus
+        />
+        <p className="create-post-count">{caption.length}/2200</p>
+
+        {/* Image slider preview */}
+        {previews.length > 0 && (
+          <div className="create-post-slider">
+            <div className="create-post-slider-track" style={{ transform: `translateX(-${sliderIdx * 100}%)` }}>
+              {previews.map((src, idx) => (
+                <div key={idx} className="create-post-slide">
+                  <img src={src} alt={`Preview ${idx + 1}`} />
+                  <button type="button" className="create-post-remove" onClick={() => removeImage(idx)}>
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {previews.length > 1 && (
+              <>
+                <button type="button" className="slider-btn slider-prev" onClick={() => setSliderIdx((i) => Math.max(0, i - 1))} disabled={sliderIdx === 0}>
+                  <ChevronLeft size={18} />
+                </button>
+                <button type="button" className="slider-btn slider-next" onClick={() => setSliderIdx((i) => Math.min(previews.length - 1, i + 1))} disabled={sliderIdx === previews.length - 1}>
+                  <ChevronRight size={18} />
+                </button>
+                <div className="slider-dots">
+                  {previews.map((_, i) => (
+                    <span key={i} className={`slider-dot ${i === sliderIdx ? "active" : ""}`} onClick={() => setSliderIdx(i)} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        ) : (
-          <div
-            className="create-post-dropzone"
-            onClick={() => fileRef.current?.click()}
-          >
-            <ImagePlus size={36} strokeWidth={1.5} />
-            <p>Click to select a photo</p>
-            <span>JPEG, PNG, GIF, or WebP — max {MAX_SIZE_MB} MB</span>
-          </div>
+        )}
+
+        {/* Add more images button */}
+        {files.length < MAX_IMAGES && (
+          <button type="button" className="create-post-add-image" onClick={() => fileRef.current?.click()}>
+            <ImagePlus size={18} />
+            {files.length === 0 ? "Add photos" : `Add more (${files.length}/${MAX_IMAGES})`}
+          </button>
         )}
 
         <input
           ref={fileRef}
           type="file"
           accept="image/jpeg,image/png,image/gif,image/webp"
+          multiple
           onChange={handleFileChange}
           style={{ display: "none" }}
         />
 
-        <textarea
-          className="create-post-caption"
-          placeholder="Write a caption..."
-          rows={2}
-          maxLength={2200}
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-        />
-        <p className="create-post-count">{caption.length}/2200</p>
-
         <button
           type="submit"
           className="btn primary create-post-submit"
-          disabled={uploading || !file}
+          disabled={uploading || !canSubmit}
         >
           {uploading ? (
             <span className="setup-btn-loading">
               <span className="setup-btn-spinner" />
-              Posting...
+              {uploadProgress || "Posting..."}
             </span>
           ) : (
             <>

@@ -1,41 +1,27 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
-  doc,
-  getDoc,
-  collection,
-  query,
-  orderBy,
-  limit,
-  getDocs,
-  deleteDoc,
-  updateDoc,
-  increment,
-  setDoc,
-  where,
-  serverTimestamp,
-  onSnapshot,
+  doc, getDoc, collection, query, orderBy, limit,
+  deleteDoc, updateDoc, increment, setDoc, serverTimestamp,
+  onSnapshot, where, getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import SetupProfile from "../components/SetupProfile";
 import CreatePost from "../components/CreatePost";
-import CommentsModal from "../components/CommentsModal";
+import InlineComments from "../components/InlineComments";
 import { FeedSkeleton } from "../components/LoadingSkeleton";
 import { staticPosts } from "../config/posts";
 import {
-  ExternalLink,
-  Trash2,
-  Pencil,
-  MoreHorizontal,
-  Heart,
-  Bookmark,
-  MessageCircle,
+  ExternalLink, Trash2, Pencil, MoreHorizontal,
+  Heart, Bookmark, MessageCircle, Share2,
+  ChevronLeft, ChevronRight, UserPlus, UserMinus,
 } from "lucide-react";
-import { alertConfirm, alertError, alertSuccess, alertPrompt } from "../utils/alerts";
+import { alertConfirm, alertError, alertPrompt } from "../utils/alerts";
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, followUser, isFollowing } = useAuth();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -45,34 +31,35 @@ export default function Home() {
   const [activeMenu, setActiveMenu] = useState(null);
   const [likedPosts, setLikedPosts] = useState({});
   const [savedPosts, setSavedPosts] = useState({});
-  const [commentsPost, setCommentsPost] = useState(null);
-  const [authorPics, setAuthorPics] = useState({});
+  const [openComments, setOpenComments] = useState({});
+  const [authorData, setAuthorData] = useState({});
+  const [followingState, setFollowingState] = useState({});
+  const [sliderIndices, setSliderIndices] = useState({});
+  const [doubleTapHeart, setDoubleTapHeart] = useState(null);
+  const lastTap = useRef({});
 
-  // Fetch author profile pics for posts (with localStorage cache)
-  const loadAuthorPics = useCallback(async (postList) => {
+  // ── Author data fetcher (with cache) ──
+  const loadAuthorData = useCallback(async (postList) => {
     const uids = [...new Set(postList.map((p) => p.authorId).filter(Boolean))];
-    const pics = {};
-
+    const data = {};
     for (const uid of uids) {
-      const cacheKey = `pic_${uid}`;
+      const cacheKey = `author_${uid}`;
       try {
         const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          pics[uid] = cached;
-          continue;
-        }
+        if (cached) { data[uid] = JSON.parse(cached); continue; }
         const snap = await getDoc(doc(db, "users", uid));
-        if (snap.exists() && snap.data().profilePic) {
-          pics[uid] = snap.data().profilePic;
-          localStorage.setItem(cacheKey, snap.data().profilePic);
+        if (snap.exists()) {
+          const d = snap.data();
+          const entry = { profilePic: d.profilePic || "", username: d.username || "" };
+          localStorage.setItem(cacheKey, JSON.stringify(entry));
+          data[uid] = entry;
         }
-      } catch {
-        // silent
-      }
+      } catch {}
     }
-    setAuthorPics((prev) => ({ ...prev, ...pics }));
+    if (Object.keys(data).length) setAuthorData((prev) => ({ ...prev, ...data }));
   }, []);
 
+  // ── Profile check ──
   useEffect(() => {
     async function checkProfile() {
       if (!user) return;
@@ -81,82 +68,56 @@ export default function Home() {
         if (snap.exists()) {
           const data = snap.data();
           setProfile(data);
-          if (!data.username) {
-            setNeedsSetup(true);
-          }
+          if (!data.username) setNeedsSetup(true);
         }
-      } catch {
-        setNeedsSetup(true);
-      } finally {
-        setChecking(false);
-      }
+      } catch { setNeedsSetup(true); }
+      finally { setChecking(false); }
     }
     checkProfile();
   }, [user]);
 
-  const loadPosts = useCallback(async () => {
+  // ── Realtime posts feed ──
+  useEffect(() => {
+    if (checking || !user) return;
     setLoadingPosts(true);
-    try {
-      const q = query(
-        collection(db, "posts"),
-        orderBy("createdAt", "desc"),
-        limit(20)
-      );
-      const snap = await getDocs(q);
+
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(30));
+    const unsub = onSnapshot(q, async (snap) => {
       const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setPosts(fetched);
-      loadAuthorPics(fetched);
+      setLoadingPosts(false);
+      loadAuthorData(fetched);
 
-      // Check which posts user has liked/saved
-      if (user && fetched.length > 0) {
+      // Load follow states for unique authors
+      const authorUids = [...new Set(fetched.map((p) => p.authorId).filter((id) => id !== user.uid))];
+      for (const uid of authorUids) {
+        const f = await isFollowing(uid);
+        setFollowingState((prev) => ({ ...prev, [uid]: f }));
+      }
+
+      // Load likes/saves
+      if (fetched.length > 0) {
         const postIds = fetched.map((p) => p.id);
-
-        const likedSnap = await getDocs(
-          query(
-            collection(db, "postLikes"),
-            where("postId", "in", postIds),
-            where("userId", "==", user.uid)
-          )
-        );
+        const likedSnap = await getDocs(query(collection(db, "postLikes"), where("postId", "in", postIds), where("userId", "==", user.uid)));
         const liked = {};
-        likedSnap.docs.forEach((d) => {
-          liked[d.data().postId] = true;
-        });
+        likedSnap.docs.forEach((d) => { liked[d.data().postId] = true; });
         setLikedPosts(liked);
 
-        const savedSnap = await getDocs(
-          query(
-            collection(db, "postSaves"),
-            where("postId", "in", postIds),
-            where("userId", "==", user.uid)
-          )
-        );
+        const savedSnap = await getDocs(query(collection(db, "postSaves"), where("postId", "in", postIds), where("userId", "==", user.uid)));
         const saved = {};
-        savedSnap.docs.forEach((d) => {
-          saved[d.data().postId] = true;
-        });
+        savedSnap.docs.forEach((d) => { saved[d.data().postId] = true; });
         setSavedPosts(saved);
       }
-    } catch {
-      // Handle silently
-    } finally {
-      setLoadingPosts(false);
-    }
-  }, [user, loadAuthorPics]);
+    }, () => { setLoadingPosts(false); });
 
-  useEffect(() => {
-    if (!checking && user) loadPosts();
-  }, [checking, user, loadPosts]);
+    return unsub;
+  }, [checking, user, loadAuthorData, isFollowing]);
 
-  // Expose functions globally so Navbar can trigger them
+  // ── Navbar bridge ──
   useEffect(() => {
-    window.__histogramLoadPosts = loadPosts;
     window.__histogramShowCreate = () => setShowCreate(true);
-    return () => {
-      delete window.__histogramLoadPosts;
-      delete window.__histogramShowCreate;
-    };
-  }, [loadPosts]);
+    return () => { delete window.__histogramShowCreate; };
+  }, []);
 
   function handleSetupComplete() {
     setNeedsSetup(false);
@@ -165,316 +126,210 @@ export default function Home() {
     });
   }
 
-  // ── Like / Unlike ──
-  async function handleLike(post) {
-    const likeRef = doc(db, "postLikes", `${user.uid}_${post.id}`);
-    const isLiked = likedPosts[post.id];
+  // ── Follow (optimistic) ──
+  async function handleFollow(targetUid) {
+    const wasFollowing = followingState[targetUid];
+    setFollowingState((prev) => ({ ...prev, [targetUid]: !wasFollowing }));
+    try { await followUser(targetUid); }
+    catch { setFollowingState((prev) => ({ ...prev, [targetUid]: wasFollowing })); }
+  }
 
+  // ── Like (optimistic) ──
+  function handleLike(post) {
+    const isLiked = likedPosts[post.id];
+    setLikedPosts((prev) => ({ ...prev, [post.id]: !isLiked }));
+    setPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, likesCount: isLiked ? Math.max(0, (p.likesCount || 1) - 1) : (p.likesCount || 0) + 1 } : p));
     try {
       if (isLiked) {
-        await deleteDoc(likeRef);
-        await updateDoc(doc(db, "posts", post.id), {
-          likesCount: increment(-1),
-        });
-        setLikedPosts((prev) => ({ ...prev, [post.id]: false }));
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === post.id
-              ? { ...p, likesCount: Math.max(0, (p.likesCount || 1) - 1) }
-              : p
-          )
-        );
+        deleteDoc(doc(db, "postLikes", `${user.uid}_${post.id}`));
+        updateDoc(doc(db, "posts", post.id), { likesCount: increment(-1) });
       } else {
-        await setDoc(likeRef, {
-          postId: post.id,
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-        });
-        await updateDoc(doc(db, "posts", post.id), {
-          likesCount: increment(1),
-        });
-        setLikedPosts((prev) => ({ ...prev, [post.id]: true }));
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === post.id
-              ? { ...p, likesCount: (p.likesCount || 0) + 1 }
-              : p
-          )
-        );
+        setDoc(doc(db, "postLikes", `${user.uid}_${post.id}`), { postId: post.id, userId: user.uid, createdAt: serverTimestamp() });
+        updateDoc(doc(db, "posts", post.id), { likesCount: increment(1) });
       }
-    } catch {
-      // silent
+    } catch {}
+  }
+
+  // ── Double-tap like ──
+  function handleDoubleTap(post) {
+    const now = Date.now();
+    const last = lastTap.current[post.id] || 0;
+    if (now - last < 300) {
+      if (!likedPosts[post.id]) handleLike(post);
+      setDoubleTapHeart(post.id);
+      setTimeout(() => setDoubleTapHeart(null), 800);
+    }
+    lastTap.current[post.id] = now;
+  }
+
+  // ── Share ──
+  function handleShare(post) {
+    const url = `${window.location.origin}/home`;
+    if (navigator.share) {
+      navigator.share({ title: `${post.authorName}'s post`, text: post.caption || "", url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      alertError("Link copied!", "Post link copied to clipboard.");
     }
   }
 
-  // ── Save / Unsave ──
+  // ── Save ──
   async function handleSave(post) {
-    const saveRef = doc(db, "postSaves", `${user.uid}_${post.id}`);
     const isSaved = savedPosts[post.id];
-
     try {
       if (isSaved) {
-        await deleteDoc(saveRef);
+        await deleteDoc(doc(db, "postSaves", `${user.uid}_${post.id}`));
         setSavedPosts((prev) => ({ ...prev, [post.id]: false }));
-        await alertSuccess("Removed", "Post removed from saved.");
       } else {
-        await setDoc(saveRef, {
-          postId: post.id,
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-        });
+        await setDoc(doc(db, "postSaves", `${user.uid}_${post.id}`), { postId: post.id, userId: user.uid, createdAt: serverTimestamp() });
         setSavedPosts((prev) => ({ ...prev, [post.id]: true }));
-        await alertSuccess("Saved!", "Post saved to your collection.");
       }
-    } catch {
-      // silent
-    }
+    } catch {}
   }
 
   // ── Delete ──
   async function handleDeletePost(post) {
-    const confirmed = await alertConfirm(
-      "Delete post?",
-      "This action cannot be undone."
-    );
-    if (!confirmed) return;
-
-    try {
-      await deleteDoc(doc(db, "posts", post.id));
-      setPosts((prev) => prev.filter((p) => p.id !== post.id));
-      await alertSuccess("Deleted", "Your post has been removed.");
-    } catch (err) {
-      alertError(
-        "Delete failed",
-        err.message.replace("Firebase: ", "") || "Something went wrong."
-      );
-    }
+    if (!(await alertConfirm("Delete post?", "This action cannot be undone."))) return;
+    try { await deleteDoc(doc(db, "posts", post.id)); }
+    catch (err) { alertError("Delete failed", err.message); }
   }
 
-  // ── Edit Caption ──
+  // ── Edit ──
   async function handleEditCaption(post) {
-    const newCaption = await alertPrompt(
-      "Edit caption",
-      "Update your post caption",
-      {
-        input: "textarea",
-        inputValue: post.caption || "",
-        inputPlaceholder: "Write a caption...",
-      }
-    );
+    const newCaption = await alertPrompt("Edit caption", "Update your post", {
+      input: "textarea", inputValue: post.caption || "", inputPlaceholder: "Write a caption...",
+    });
     if (newCaption === null) return;
+    try { await updateDoc(doc(db, "posts", post.id), { caption: newCaption.trim() }); }
+    catch (err) { alertError("Update failed", err.message); }
+  }
 
-    try {
-      await updateDoc(doc(db, "posts", post.id), {
-        caption: newCaption.trim(),
-      });
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === post.id ? { ...p, caption: newCaption.trim() } : p
-        )
-      );
-      await alertSuccess("Updated", "Your caption has been updated.");
-    } catch (err) {
-      alertError(
-        "Update failed",
-        err.message.replace("Firebase: ", "") || "Something went wrong."
-      );
-    }
+  // ── Time ago helper ──
+  function timeAgo(timestamp) {
+    if (!timestamp?.seconds) return "";
+    const diff = Date.now() - timestamp.seconds * 1000;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d`;
   }
 
   usePageAnimations("home");
 
-  if (checking) {
-    return (
-      <div className="page">
-        <FeedSkeleton />
-      </div>
-    );
-  }
+  if (checking) return <div className="page"><FeedSkeleton /></div>;
 
   return (
     <div className="page page-enter">
-      {needsSetup && (
-        <SetupProfile profile={profile} onComplete={handleSetupComplete} />
-      )}
+      {needsSetup && <SetupProfile profile={profile} onComplete={handleSetupComplete} />}
+      {showCreate && <CreatePost onClose={() => setShowCreate(false)} />}
 
-      {showCreate && (
-        <CreatePost
-          onClose={() => setShowCreate(false)}
-          onCreated={loadPosts}
-        />
-      )}
-
-      {commentsPost && (
-        <CommentsModal
-          post={commentsPost}
-          onClose={() => setCommentsPost(null)}
-        />
-      )}
-
-      {/* ── Header ── */}
       <div className="home-header">
         <h1 className="home-title">
           Welcome{profile?.username ? ", " : " "}
-          {profile?.username ? (
-            <span className="neon-text">@{profile.username}</span>
-          ) : (
-            ""
-          )}{" "}
-          <span role="img" aria-label="wave">
-            👋
-          </span>
+          {profile?.username ? <span className="neon-text">@{profile.username}</span> : ""}
+          {" "}<span role="img" aria-label="wave">👋</span>
         </h1>
       </div>
 
-      {/* ── Feed ── */}
-      {loadingPosts ? (
-        <FeedSkeleton />
-      ) : (
+      {loadingPosts ? <FeedSkeleton /> : (
         <div className="feed">
-          {/* ── Static / ad posts — always visible ── */}
           {staticPosts.map((sp) => (
-            <div key={sp.id} className={`feed-post feed-post-ad`}>
+            <div key={sp.id} className="feed-post feed-post-ad">
               <div className="feed-post-header">
-                <div className="feed-post-avatar feed-post-avatar-ad">
-                  {sp.authorName?.[0]?.toUpperCase() || "?"}
-                </div>
-                <div className="feed-post-meta">
-                  <span className="feed-post-author">{sp.authorName}</span>
-                  <span className="feed-post-ad-badge">AD</span>
-                </div>
+                <div className="feed-post-avatar feed-post-avatar-ad">{sp.authorName?.[0]?.toUpperCase()}</div>
+                <div className="feed-post-meta"><span className="feed-post-author">{sp.authorName}</span><span className="feed-post-ad-badge">AD</span></div>
               </div>
-              {sp.image && (
-                <img
-                  src={sp.image}
-                  alt={sp.caption || ""}
-                  className="feed-post-image"
-                />
-              )}
-              {sp.caption && (
-                <p className="feed-post-caption">{sp.caption}</p>
-              )}
-              {sp.link && (
-                <div className="feed-post-ad-actions">
-                  <a
-                    href={sp.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn primary btn-sm"
-                  >
-                    {sp.linkLabel || "Learn more"}
-                    <ExternalLink size={14} />
-                  </a>
-                </div>
-              )}
+              {sp.image && <img src={sp.image} alt="" className="feed-post-image" />}
+              {sp.caption && <p className="feed-post-caption">{sp.caption}</p>}
+              {sp.link && <div className="feed-post-ad-actions"><a href={sp.link} target="_blank" rel="noopener noreferrer" className="btn primary btn-sm">{sp.linkLabel || "Learn more"} <ExternalLink size={14} /></a></div>}
             </div>
           ))}
 
-          {/* ── Real Firebase posts ── */}
           {posts.length === 0 ? (
-            <div className="home-empty">
-              <p>No posts from the community yet — be the first to share something!</p>
-            </div>
-          ) : (
-            posts.map((post) => (
+            <div className="home-empty"><p>No posts yet — be the first to share!</p></div>
+          ) : posts.map((post) => {
+            const ad = authorData[post.authorId] || {};
+            const isOwn = post.authorId === user?.uid;
+            const images = post.imageUrls?.length ? post.imageUrls : (post.imageUrl ? [post.imageUrl] : []);
+            const sIdx = sliderIndices[post.id] || 0;
+
+            return (
               <div key={post.id} className="feed-post">
+                {/* Header */}
                 <div className="feed-post-header">
-                  {authorPics[post.authorId] ? (
-                    <img
-                      src={authorPics[post.authorId]}
-                      alt=""
-                      className="feed-post-avatar-img"
-                    />
-                  ) : (
-                    <div className="feed-post-avatar">
-                      {post.authorName?.[0]?.toUpperCase() || "?"}
-                    </div>
-                  )}
-                  <div className="feed-post-meta">
-                    <span className="feed-post-author">{post.authorName}</span>
+                  <Link to={`/profile/${post.authorId}`} className="feed-post-avatar-link">
+                    {ad.profilePic ? <img src={ad.profilePic} alt="" className="feed-post-avatar-img" /> : <div className="feed-post-avatar">{post.authorName?.[0]?.toUpperCase() || "?"}</div>}
+                  </Link>
+                  <div className="feed-post-meta-col">
+                    <Link to={`/profile/${post.authorId}`} className="feed-post-author feed-post-author-link">
+                      {ad.username ? `@${ad.username}` : post.authorName}
+                    </Link>
+                    {post.createdAt && <span className="feed-post-time">{timeAgo(post.createdAt)}</span>}
                   </div>
-                  {post.authorId === user?.uid && (
+                  {!isOwn && user && (
+                    <button className={`btn btn-xs ${followingState[post.authorId] ? "ghost" : "primary"}`} onClick={() => handleFollow(post.authorId)}>
+                      {followingState[post.authorId] ? <><UserMinus size={14} /> Unfollow</> : <><UserPlus size={14} /> Follow</>}
+                    </button>
+                  )}
+                  {isOwn && (
                     <div className="feed-post-menu">
-                      <button
-                        className="btn icon-only feed-post-menu-btn"
-                        onClick={() => setActiveMenu(activeMenu === post.id ? null : post.id)}
-                      >
-                        <MoreHorizontal size={18} />
-                      </button>
+                      <button className="btn icon-only feed-post-menu-btn" onClick={() => setActiveMenu(activeMenu === post.id ? null : post.id)}><MoreHorizontal size={18} /></button>
                       {activeMenu === post.id && (
                         <div className="feed-post-dropdown">
-                          <button
-                            className="feed-post-dropdown-item"
-                            onClick={() => {
-                              setActiveMenu(null);
-                              handleEditCaption(post);
-                            }}
-                          >
-                            <Pencil size={14} />
-                            Edit caption
-                          </button>
-                          <button
-                            className="feed-post-dropdown-item feed-post-dropdown-danger"
-                            onClick={() => {
-                              setActiveMenu(null);
-                              handleDeletePost(post);
-                            }}
-                          >
-                            <Trash2 size={14} />
-                            Delete post
-                          </button>
+                          <button className="feed-post-dropdown-item" onClick={() => { setActiveMenu(null); handleEditCaption(post); }}><Pencil size={14} /> Edit</button>
+                          <button className="feed-post-dropdown-item feed-post-dropdown-danger" onClick={() => { setActiveMenu(null); handleDeletePost(post); }}><Trash2 size={14} /> Delete</button>
                         </div>
                       )}
                     </div>
                   )}
                 </div>
-                {post.imageUrl && (
-                  <img
-                    src={post.imageUrl}
-                    alt={post.caption || "Post"}
-                    className="feed-post-image"
-                  />
-                )}
-                {post.caption && (
-                  <p className="feed-post-caption">{post.caption}</p>
+
+                {/* Image slider with double-tap */}
+                {images.length > 0 && (
+                  <div className="feed-post-slider" onClick={() => handleDoubleTap(post)}>
+                    {doubleTapHeart === post.id && <div className="double-tap-heart"><Heart size={64} fill="#fff" /></div>}
+                    <div className="feed-post-slider-track" style={{ transform: `translateX(-${sIdx * 100}%)` }}>
+                      {images.map((url, i) => (
+                        <div key={i} className="feed-post-slide"><img src={url} alt="" className="feed-post-image" /></div>
+                      ))}
+                    </div>
+                    {images.length > 1 && (
+                      <>
+                        <button className="slider-btn slider-prev" onClick={(e) => { e.stopPropagation(); setSliderIndices((p) => ({ ...p, [post.id]: Math.max(0, (p[post.id] || 0) - 1) })); }} disabled={sIdx === 0}><ChevronLeft size={18} /></button>
+                        <button className="slider-btn slider-next" onClick={(e) => { e.stopPropagation(); setSliderIndices((p) => ({ ...p, [post.id]: Math.min(images.length - 1, (p[post.id] || 0) + 1) })); }} disabled={sIdx === images.length - 1}><ChevronRight size={18} /></button>
+                        <div className="slider-dots">{images.map((_, i) => <span key={i} className={`slider-dot ${i === sIdx ? "active" : ""}`} onClick={(e) => { e.stopPropagation(); setSliderIndices((p) => ({ ...p, [post.id]: i })); }} />)}</div>
+                      </>
+                    )}
+                  </div>
                 )}
 
-                {/* ── Post Actions ── */}
+                {post.caption && <p className="feed-post-caption">{post.caption}</p>}
+
+                {/* Actions */}
                 <div className="feed-post-actions">
-                  <button
-                    className={`feed-post-action-btn ${likedPosts[post.id] ? "liked" : ""}`}
-                    onClick={() => handleLike(post)}
-                  >
-                    <Heart
-                      size={20}
-                      fill={likedPosts[post.id] ? "var(--error)" : "none"}
-                    />
-                    {post.likesCount > 0 && (
-                      <span>{post.likesCount}</span>
-                    )}
+                  <button className={`feed-post-action-btn ${likedPosts[post.id] ? "liked" : ""}`} onClick={() => handleLike(post)}>
+                    <Heart size={20} fill={likedPosts[post.id] ? "var(--error)" : "none"} />
+                    {post.likesCount > 0 && <span>{post.likesCount}</span>}
                   </button>
-                  <button
-                    className="feed-post-action-btn"
-                    onClick={() => setCommentsPost(post)}
-                  >
+                  <button className={`feed-post-action-btn ${openComments[post.id] ? "active" : ""}`} onClick={() => setOpenComments((p) => ({ ...p, [post.id]: !p[post.id] }))}>
                     <MessageCircle size={20} />
-                    {post.commentsCount > 0 && (
-                      <span>{post.commentsCount}</span>
-                    )}
+                    {post.commentsCount > 0 && <span>{post.commentsCount}</span>}
                   </button>
-                  <button
-                    className={`feed-post-action-btn ${savedPosts[post.id] ? "saved" : ""}`}
-                    onClick={() => handleSave(post)}
-                  >
-                    <Bookmark
-                      size={20}
-                      fill={savedPosts[post.id] ? "var(--cyan)" : "none"}
-                    />
+                  <button className="feed-post-action-btn" onClick={() => handleShare(post)}>
+                    <Share2 size={20} />
+                  </button>
+                  <button className={`feed-post-action-btn ${savedPosts[post.id] ? "saved" : ""}`} onClick={() => handleSave(post)}>
+                    <Bookmark size={20} fill={savedPosts[post.id] ? "var(--cyan)" : "none"} />
                   </button>
                 </div>
+
+                {openComments[post.id] && <InlineComments post={post} />}
               </div>
-            ))
-          )}
+            );
+          })}
         </div>
       )}
     </div>

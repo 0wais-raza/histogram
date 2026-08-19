@@ -109,13 +109,16 @@ export default function Explore() {
                     {u.username?.[0]?.toUpperCase() || "?"}
                   </div>
                 )}
-                <div className="feed-post-meta">
+                <div className="feed-post-meta" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
                   <span className="feed-post-author">
                     @{u.username}
                   </span>
                   {u.bio && (
                     <span className="explore-user-bio">{u.bio}</span>
                   )}
+                </div>
+                <div className="explore-user-stats">
+                  <span>{u.followersCount ?? 0} followers</span>
                 </div>
               </div>
             </Link>

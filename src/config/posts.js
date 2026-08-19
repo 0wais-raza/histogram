@@ -7,10 +7,19 @@ export const staticPosts = [
   {
     id: "ad-histogram-main",
     type: "ad",
-    image: "/histogram.png",
-    caption: "Share moments, follow friends, and discover content from people you love.",
-    authorName: "Histogram",
-    link: "https://histogram.app",
+    image: "/sellkar_ad.jfif",
+    caption: "Can't afford Shopify? We are here! simply see our pricing!",
+    authorName: "SellKar",
+    link: "https://sellkar.pk",
+    linkLabel: "Learn more",
+  },
+  {
+    id: "ad-histogram-main",
+    type: "ad",
+    image: "/info.webp",
+    caption: "A Real app for real shop use! made by me! MongoDB used!",
+    authorName: "Meeral-collection",
+    link: "https://meeral-collection.vercel.app/",
     linkLabel: "Learn more",
   },
 ];

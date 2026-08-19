@@ -13,6 +13,7 @@ import {
   Camera,
   Plus,
   Compass,
+  Bookmark,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -25,11 +26,18 @@ export default function Navbar() {
 
   const isLanding = location.pathname === "/";
 
-  // Fetch profile pic from Firestore
+  // Fetch profile pic — localStorage first, then Firestore
   useEffect(() => {
     if (!user) return;
+    const cacheKey = `pic_${user.uid}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setProfilePic(cached);
+      return;
+    }
     getDoc(doc(db, "users", user.uid)).then((snap) => {
       if (snap.exists() && snap.data().profilePic) {
+        localStorage.setItem(cacheKey, snap.data().profilePic);
         setProfilePic(snap.data().profilePic);
       }
     });
@@ -134,6 +142,11 @@ export default function Navbar() {
                 <Link to="/explore" className="nav-dropdown-item">
                   <Compass size={16} />
                   Explore
+                </Link>
+
+                <Link to="/saved" className="nav-dropdown-item">
+                  <Bookmark size={16} />
+                  Saved
                 </Link>
 
                 <Link to={`/profile/${user.uid}`} className="nav-dropdown-item">

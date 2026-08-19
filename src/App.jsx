@@ -10,6 +10,8 @@ import Signup from "./pages/Signup";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Explore from "./pages/Explore";
+import Followers from "./pages/Followers";
+import Saved from "./pages/Saved";
 
 export default function App() {
   return (
@@ -26,6 +28,8 @@ export default function App() {
                 <Route path="/home" element={<Home />} />
                 <Route path="/explore" element={<Explore />} />
                 <Route path="/profile/:uid" element={<Profile />} />
+                <Route path="/profile/:uid/followers" element={<Followers />} />
+                <Route path="/saved" element={<Saved />} />
               </Route>
             </Routes>
           </PageTransition>

@@ -60,6 +60,18 @@
   align-items: center;
 }
 
+.stat-link {
+  text-decoration: none;
+  color: inherit;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s var(--ease-out);
+}
+
+.stat-link:hover {
+  background: rgba(134, 59, 255, 0.08);
+}
+
 .stat-value {
   font-size: 18px;
   font-weight: 800;
@@ -124,6 +136,18 @@
 
 .grid-item:hover {
   border-color: var(--border-glow);
+}
+
+.grid-item-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  word-break: break-word;
+  background: var(--glass-bg);
 }
 
 .grid-item-delete {
