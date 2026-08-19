@@ -1,17 +1,54 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
-import { ArrowRight, Camera } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Swal from "sweetalert2";
 
 export default function Landing() {
   const { user, loading } = useAuth();
+  const videoRef = useRef(null);
   usePageAnimations("landing");
 
   useEffect(() => {
     document.body.classList.add("landing-active");
     return () => document.body.classList.remove("landing-active");
   }, []);
+
+  // Show SWAL on load, play video on confirm
+  useEffect(() => {
+    if (loading || user) return;
+
+    const timer = setTimeout(() => {
+      Swal.fire({
+        title: "Welcome to Histogram",
+        html: `
+          <p style="color: var(--text-secondary); margin: 0 0 8px; font-size: 14px;">
+            Share moments. Follow friends. A photo feed with a modern edge.
+          </p>
+        `,
+        icon: "info",
+        confirmButtonText: `<span style="display:flex;align-items:center;gap:8px;"><span>Enter</span></span>`,
+        confirmButtonColor: "#863bff",
+        buttonsStyling: true,
+        customClass: {
+          popup: "swal-custom-popup",
+          title: "swal-custom-title",
+          htmlContainer: "swal-custom-html",
+          confirmButton: "swal-confirm-btn",
+        },
+        showClass: { popup: "swal2-show swal2-bounce-in" },
+        hideClass: { popup: "swal2-hide swal2-bounce-out" },
+      }).then((result) => {
+        if (result.isConfirmed && videoRef.current) {
+          videoRef.current.muted = false;
+          videoRef.current.play().catch(() => {});
+        }
+      });
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [loading, user]);
 
   // Redirect to home if already logged in
   if (!loading && user) {
@@ -30,13 +67,31 @@ export default function Landing() {
   }
 
   return (
-    <div className="landing-page">
+    <div className="landing-page landing-page-video">
+      {/* Background video — lightweight settings */}
+      <video
+        ref={videoRef}
+        className="landing-bg-video"
+        src="/bg.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        poster="/histogram.png"
+        webkit-playsinline="true"
+      />
+
+      {/* Beautiful gradient overlay */}
+      <div className="landing-video-overlay" />
+
+      {/* Extra decorative glow */}
       <div className="landing-glow" />
-      
+
       {/* Landing Header */}
       <nav className="landing-header">
         <Link to="/" className="landing-header-logo">
-          <Camera size={22} />
+          <img src="/histogram.png" alt="" className="landing-header-logo-img" />
           <span>Histogram</span>
         </Link>
         <div className="landing-header-actions">

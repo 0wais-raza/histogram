@@ -251,7 +251,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 60px);
+  min-height: 100vh;
   padding: 24px 16px;
   position: relative;
   z-index: 1;
@@ -619,7 +619,9 @@
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 5, 15, 0.85);
+  background: rgba(5, 5, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -839,57 +841,6 @@
    ════════════════════════════════════════ */
 
 @media (max-width: 640px) {
-  .navbar {
-    padding: 10px 16px;
-  }
-
-  .logo-text {
-    display: none;
-  }
-
-  .nav-btn {
-    padding: 7px 12px !important;
-    font-size: 12px !important;
-  }
-
-  .nav-new-post-btn {
-    padding: 6px 10px !important;
-    font-size: 0 !important;
-    border-radius: 50% !important;
-    width: 34px;
-    height: 34px;
-    padding: 0 !important;
-  }
-
-  .nav-new-post-text {
-    display: none;
-  }
-
-  .nav-dropdown {
-    position: fixed;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    animation: dropdownUp 0.2s var(--ease-out);
-  }
-
-  @keyframes dropdownUp {
-    from {
-      transform: translateY(100%);
-    }
-
-    to {
-      transform: translateY(0);
-    }
-  }
-
-  .nav-dropdown-header {
-    padding: 16px;
-  }
-
   .auth-card {
     padding: 28px 24px;
     border-radius: var(--radius-lg);
@@ -919,5 +870,10 @@
 
   .modal-actions .btn {
     width: 100%;
+  }
+
+  .pw-rules {
+    flex-direction: column;
+    gap: 2px;
   }
 }

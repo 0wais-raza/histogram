@@ -1,11 +1,11 @@
 import { useState, useRef } from "react";
-import { doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
-import { alertError, alertSuccess, alertPrompt } from "../utils/alerts";
+import { alertError, alertSuccess } from "../utils/alerts";
 import { uploadImage } from "../utils/uploadImage";
-import { Save, X, Camera, User, Lock, Trash2, Check } from "lucide-react";
+import { Save, X, Camera, User, Lock, Check } from "lucide-react";
 
 const MAX_BIO = 150;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -48,11 +48,14 @@ export default function EditProfile({ profile, onClose, onSaved }) {
   const [preview, setPreview] = useState(profile.profilePic || "");
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
-  
-  // Password change state
+
+  // Password change state — all inline now
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const fileRef = useRef(null);
 
@@ -114,6 +117,9 @@ export default function EditProfile({ profile, onClose, onSaved }) {
   async function handlePasswordSubmit(e) {
     e.preventDefault();
 
+    if (!currentPassword) {
+      return alertError("Current password required", "Enter your current password.");
+    }
     if (newPassword !== confirmPassword) {
       return alertError("Passwords don't match", "Re-enter your new password.");
     }
@@ -123,22 +129,13 @@ export default function EditProfile({ profile, onClose, onSaved }) {
       return alertError("Password too weak", "Please meet all password requirements.");
     }
 
-    setUploading(true);
+    setChangingPassword(true);
     try {
-      // Re-authenticate user
-      const credential = EmailAuthProvider.credential(user.email, user.providerData[0]?.uid ? "" : "");
-      
-      // Prompt for current password
-      const currentPassword = await alertPrompt("Current Password", "Enter your current password to confirm");
-      if (!currentPassword) {
-        setUploading(false);
-        return;
-      }
-
       const cred = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, cred);
       await updatePassword(user, newPassword);
 
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       await alertSuccess("Password updated!", "Your password has been changed successfully.");
@@ -150,7 +147,7 @@ export default function EditProfile({ profile, onClose, onSaved }) {
         alertError("Update failed", msg || "Something went wrong.");
       }
     } finally {
-      setUploading(false);
+      setChangingPassword(false);
     }
   }
 
@@ -248,20 +245,41 @@ export default function EditProfile({ profile, onClose, onSaved }) {
           </>
         ) : (
           <>
-            <label className="muted">New Password</label>
+            <label className="muted">Current Password</label>
             <div className="password-field">
               <input
-                type={showPassword ? "text" : "password"}
-                placeholder="New password (min 8)"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                type={showCurrentPw ? "text" : "password"}
+                placeholder="Enter current password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
               />
               <button
                 type="button"
                 className="pw-toggle"
-                onClick={() => setShowPassword((v) => !v)}
+                onClick={() => setShowCurrentPw((v) => !v)}
+                tabIndex={-1}
               >
-                {showPassword ? <X size={16} /> : <Lock size={16} />}
+                {showCurrentPw ? <X size={16} /> : <Lock size={16} />}
+              </button>
+            </div>
+
+            <label className="muted">New Password</label>
+            <div className="password-field">
+              <input
+                type={showNewPw ? "text" : "password"}
+                placeholder="New password (min 8)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                className="pw-toggle"
+                onClick={() => setShowNewPw((v) => !v)}
+                tabIndex={-1}
+              >
+                {showNewPw ? <X size={16} /> : <Lock size={16} />}
               </button>
             </div>
             {newPassword && <RuleChecklist rules={PASSWORD_RULES} value={newPassword} />}
@@ -269,10 +287,11 @@ export default function EditProfile({ profile, onClose, onSaved }) {
             <label className="muted">Confirm Password</label>
             <div className="password-field">
               <input
-                type={showPassword ? "text" : "password"}
+                type={showNewPw ? "text" : "password"}
                 placeholder="Confirm new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
               />
             </div>
             {confirmPassword && newPassword !== confirmPassword && (
@@ -285,9 +304,9 @@ export default function EditProfile({ profile, onClose, onSaved }) {
               </button>
               <button
                 className="btn primary"
-                disabled={uploading || !newPassword || newPassword !== confirmPassword}
+                disabled={changingPassword || !currentPassword || !newPassword || newPassword !== confirmPassword}
               >
-                {uploading ? (
+                {changingPassword ? (
                   <span className="setup-btn-loading">
                     <span className="setup-btn-spinner" /> Updating...
                   </span>

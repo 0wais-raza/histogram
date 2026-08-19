@@ -105,7 +105,7 @@ export default function Signup() {
     } catch (err) {
       const msg = err.message.replace("Firebase: ", "");
       alertError("Signup failed", friendlyAuthError(msg));
-      setTimeout(() => navigate("/"), 2000);
+      // Don't redirect on error
     } finally {
       setLoading(false);
     }
@@ -120,7 +120,6 @@ export default function Signup() {
       const msg = err.message.replace("Firebase: ", "");
       if (!msg.includes("popup-closed-by-user")) {
         alertError("Google sign-in failed", friendlyAuthError(msg));
-        setTimeout(() => navigate("/"), 2000);
       }
     } finally {
       setGoogleLoading(false);
@@ -204,9 +203,11 @@ export default function Signup() {
           </button>
         </div>
 
-        <button type="submit" disabled={loading}>
+        <button type="submit" disabled={loading} className="auth-submit-btn">
           {loading ? (
-            "Creating account..."
+            <span className="setup-btn-loading">
+              <span className="setup-btn-spinner" /> Creating account...
+            </span>
           ) : (
             <>
               <UserPlus size={18} />
@@ -215,7 +216,7 @@ export default function Signup() {
           )}
         </button>
 
-        <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "14px" }}>
+        <p className="auth-switch-text">
           Already have an account? <Link to="/login">Log in</Link>
         </p>
       </form>

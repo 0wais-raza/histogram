@@ -138,6 +138,32 @@
   border-color: var(--border-glow);
 }
 
+.grid-item-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  border-radius: var(--radius-sm);
+}
+
+.grid-item-wrapper:hover .grid-item-overlay {
+  opacity: 1;
+}
+
+.grid-item-overlay span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+
 .grid-item-text {
   display: flex;
   align-items: center;

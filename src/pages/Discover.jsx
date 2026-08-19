@@ -8,13 +8,12 @@ import {
   getDocs,
   doc,
   getDoc,
-  onSnapshot,
   where,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
-import { TrendingUp, Hash, Music, Bookmark, Heart } from "lucide-react";
+import { TrendingUp, Hash, Music, Bookmark, Heart, MessageCircle } from "lucide-react";
 import { FeedSkeleton } from "../components/LoadingSkeleton";
 
 export default function Discover() {
@@ -35,13 +34,13 @@ export default function Discover() {
       setLoading(true);
       try {
         if (activeCategory === "Saved") {
-          // Load saved posts
           const savesSnap = await getDocs(
             query(collection(db, "postSaves"), where("userId", "==", user.uid), orderBy("createdAt", "desc"), limit(20))
           );
           const postIds = savesSnap.docs.map((d) => d.data().postId);
           if (postIds.length === 0) {
             if (!cancelled) setTrendingPosts([]);
+            setLoading(false);
             return;
           }
           const allPosts = [];
@@ -52,17 +51,15 @@ export default function Discover() {
           }
           if (!cancelled) setTrendingPosts(allPosts);
         } else {
-          // For You / Music / Tags - show recent posts with images
           const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(30));
           const snap = await getDocs(q);
           const posts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          
+
           let filtered = posts;
           if (activeCategory === "Music") {
             filtered = posts.filter((p) => p.musicUrl || p.musicName);
           }
-          
-          // Fetch author data
+
           const uids = [...new Set(filtered.map((p) => p.authorId).filter(Boolean))];
           const authorData = {};
           for (const uid of uids) {
@@ -73,7 +70,7 @@ export default function Discover() {
               }
             } catch {}
           }
-          
+
           if (!cancelled) {
             setTrendingPosts(filtered.map((p) => ({ ...p, _author: authorData[p.authorId] || {} })));
           }
@@ -125,7 +122,7 @@ export default function Discover() {
           {trendingPosts.map((post) => {
             const images = post.imageUrls?.length ? post.imageUrls : (post.imageUrl ? [post.imageUrl] : []);
             return (
-              <Link key={post.id} to="/home" className="discover-grid-item">
+              <Link key={post.id} to={`/profile/${post.authorId}`} className="discover-grid-item">
                 {images.length > 0 ? (
                   <img src={images[0]} alt="" className="discover-grid-img" />
                 ) : (
@@ -135,6 +132,7 @@ export default function Discover() {
                 )}
                 <div className="discover-grid-overlay">
                   <span><Heart size={14} /> {post.likesCount || 0}</span>
+                  <span><MessageCircle size={14} /> {post.commentsCount || 0}</span>
                 </div>
               </Link>
             );

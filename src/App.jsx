@@ -13,43 +13,56 @@ import Explore from "./pages/Explore";
 import Followers from "./pages/Followers";
 import Saved from "./pages/Saved";
 import Discover from "./pages/Discover";
-import Reels from "./pages/Reels";
 import Music from "./pages/Music";
 import Notifications from "./pages/Notifications";
 import Messages from "./pages/Messages";
 import SearchPage from "./pages/SearchPage";
+import CreatePostPage from "./pages/CreatePostPage";
+import { useLocation } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
+
+function AppRoutes() {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  const isPublicPage = ["/", "/login", "/signup"].includes(location.pathname);
+  const showSidebar = !loading && user && !isPublicPage;
+
+  return (
+    <div className={`app-layout ${showSidebar ? "has-sidebar" : "no-sidebar"}`}>
+      {showSidebar && <Sidebar />}
+      <main className={`app-main${showSidebar ? "" : " app-main-full"}`}>
+        <PageTransition>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/home" element={<Home />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/discover" element={<Discover />} />
+              <Route path="/music" element={<Music />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/profile/:uid" element={<Profile />} />
+              <Route path="/profile/:uid/followers" element={<Followers />} />
+              <Route path="/saved" element={<Saved />} />
+              <Route path="/create" element={<CreatePostPage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </PageTransition>
+      </main>
+    </div>
+  );
+}
 
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <div className="app-layout">
-            <Sidebar />
-            <main className="app-main">
-              <PageTransition>
-                <Routes>
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/home" element={<Home />} />
-                    <Route path="/explore" element={<Explore />} />
-                    <Route path="/discover" element={<Discover />} />
-                    <Route path="/reels" element={<Reels />} />
-                    <Route path="/music" element={<Music />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/messages" element={<Messages />} />
-                    <Route path="/search" element={<SearchPage />} />
-                    <Route path="/profile/:uid" element={<Profile />} />
-                    <Route path="/profile/:uid/followers" element={<Followers />} />
-                    <Route path="/saved" element={<Saved />} />
-                  </Route>
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </PageTransition>
-            </main>
-          </div>
+          <AppRoutes />
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

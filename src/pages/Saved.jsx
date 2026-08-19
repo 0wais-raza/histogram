@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  collection, query, where, orderBy, getDocs, doc, getDoc,
+  collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -18,45 +18,58 @@ export default function Saved() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    async function load() {
-      setLoading(true);
-      try {
-        const savesSnap = await getDocs(
-          query(collection(db, "postSaves"), where("userId", "==", user.uid), orderBy("createdAt", "desc"))
-        );
-        const postIds = savesSnap.docs.map((d) => d.data().postId);
-        if (postIds.length === 0) { if (!cancelled) { setSavedPosts([]); setLoading(false); } return; }
 
-        // Fetch posts in batches of 10 (Firestore limit)
-        const allPosts = [];
-        for (let i = 0; i < postIds.length; i += 10) {
-          const batch = postIds.slice(i, i + 10);
+    // Subscribe to saves in realtime
+    const savesQ = query(
+      collection(db, "postSaves"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsub = onSnapshot(savesQ, async (savesSnap) => {
+      if (cancelled) return;
+      const postIds = savesSnap.docs.map((d) => d.data().postId);
+
+      if (postIds.length === 0) {
+        setSavedPosts([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch posts in batches of 10 (Firestore limit)
+      const allPosts = [];
+      for (let i = 0; i < postIds.length; i += 10) {
+        const batch = postIds.slice(i, i + 10);
+        try {
           const postsSnap = await getDocs(
             query(collection(db, "posts"), where("__name__", "in", batch))
           );
           allPosts.push(...postsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        }
-        if (cancelled) return;
-        setSavedPosts(allPosts);
+        } catch {}
+      }
 
-        // Fetch author data
-        const uids = [...new Set(allPosts.map((p) => p.authorId).filter(Boolean))];
-        const data = {};
-        for (const uid of uids) {
-          try {
-            const snap = await getDoc(doc(db, "users", uid));
-            if (snap.exists()) {
-              const d = snap.data();
-              data[uid] = { profilePic: d.profilePic || "", username: d.username || "" };
-            }
-          } catch {}
-        }
-        if (!cancelled && Object.keys(data).length) setAuthorData(data);
-      } catch {}
-      finally { if (!cancelled) setLoading(false); }
-    }
-    load();
-    return () => { cancelled = true; };
+      if (cancelled) return;
+      setSavedPosts(allPosts);
+
+      // Fetch author data
+      const uids = [...new Set(allPosts.map((p) => p.authorId).filter(Boolean))];
+      const data = {};
+      for (const uid of uids) {
+        try {
+          const snap = await getDoc(doc(db, "users", uid));
+          if (snap.exists()) {
+            const d = snap.data();
+            data[uid] = { profilePic: d.profilePic || "", username: d.username || "" };
+          }
+        } catch {}
+      }
+      if (!cancelled && Object.keys(data).length) setAuthorData(data);
+      setLoading(false);
+    }, () => {
+      if (!cancelled) setLoading(false);
+    });
+
+    return () => { cancelled = true; unsub(); };
   }, [user]);
 
   usePageAnimations("home");
@@ -83,11 +96,10 @@ export default function Saved() {
                 {post.caption && <p className="feed-post-caption">{post.caption}</p>}
                 <Link
                   to={`/profile/${post.authorId}`}
-                  className="feed-post-caption"
-                  style={{ borderTop: "1px solid var(--border)", paddingTop: 8, fontSize: 12, color: "var(--muted)", textDecoration: "none", display: "block" }}
+                  className="saved-post-author-link"
                 >
                   {ad.profilePic ? (
-                    <img src={ad.profilePic} alt="" style={{ width: 16, height: 16, borderRadius: "50%", verticalAlign: "middle", marginRight: 6 }} />
+                    <img src={ad.profilePic} alt="" className="saved-post-author-pic" />
                   ) : null}
                   Posted by {ad.username ? `@${ad.username}` : post.authorName}
                 </Link>

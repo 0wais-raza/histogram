@@ -20,7 +20,7 @@
     var(--bg);
 }
 
-/* Subtle grid overlay only on landing */
+/* Subtle grid overlay only on landing
 .landing-page::before {
   content: '';
   position: absolute;
@@ -31,10 +31,10 @@
   background-size: 80px 80px;
   pointer-events: none;
   z-index: 0;
-}
+} */
 
 /* Glow accent blob behind hero */
-.landing-glow {
+/* .landing-glow {
   position: absolute;
   width: 600px;
   height: 600px;
@@ -46,7 +46,7 @@
   pointer-events: none;
   z-index: 0;
   filter: blur(40px);
-}
+} */
 
 /* ── Hero Content ── */
 .hero {
@@ -84,7 +84,7 @@
 }
 
 .hero p {
-  color: var(--text-secondary);
+  color: white;
   font-size: 18px;
   line-height: 1.6;
   max-width: 440px;
@@ -181,3 +181,49 @@
     font-size: 16px;
   }
 }
+
+/* ════════════════════════════════════════
+   Landing Video Background
+   ════════════════════════════════════════ */
+
+.landing-page-video {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  will-change: transform;
+}
+
+.landing-video-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(10, 10, 18, 0.6) 0%,
+      rgba(10, 10, 18, 0.45) 30%,
+      rgba(10, 10, 18, 0.5) 60%,
+      rgba(10, 10, 18, 0.85) 100%
+    );
+}
+
+.landing-page-video .landing-glow {
+  z-index: 2;
+}
+
+.landing-page-video .landing-header {
+  z-index: 10;
+}
+
+.landing-page-video .hero {
+  z-index: 10;
+}
+

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { alertConfirm, alertSuccess } from "../utils/alerts";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
@@ -8,26 +9,26 @@ import {
   Home,
   Search,
   Compass,
-  Film,
   MessageCircle,
   Heart,
   PlusSquare,
   Bookmark,
-  User,
   LogOut,
   Menu,
   X,
   Camera,
   MoreHorizontal,
-  Music,
+  Sun,
+  Moon,
+  Settings,
 } from "lucide-react";
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const { dark, toggle } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [profilePic, setProfilePic] = useState("");
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef(null);
@@ -53,7 +54,6 @@ export default function Sidebar() {
 
   // Close mobile menu on route change
   useEffect(() => {
-    setMobileOpen(false);
     setShowMore(false);
   }, [location.pathname]);
 
@@ -77,15 +77,6 @@ export default function Sidebar() {
     navigate("/");
   }
 
-  function handleNewPost() {
-    if (window.__histogramShowCreate) {
-      window.__histogramShowCreate();
-    } else {
-      navigate("/home");
-      setTimeout(() => window.__histogramShowCreate?.(), 300);
-    }
-  }
-
   // Landing page - no sidebar
   if (isLanding || !user) return null;
 
@@ -95,10 +86,9 @@ export default function Sidebar() {
     { icon: Home, label: "Home", path: "/home" },
     { icon: Search, label: "Search", path: "/search" },
     { icon: Compass, label: "Explore", path: "/explore" },
-    { icon: Film, label: "Reels", path: "/reels" },
+    { icon: PlusSquare, label: "Create", path: "/create" },
     { icon: MessageCircle, label: "Messages", path: "/messages" },
     { icon: Heart, label: "Notifications", path: "/notifications" },
-    { icon: PlusSquare, label: "Create", action: handleNewPost },
     { icon: Bookmark, label: "Saved", path: "/saved" },
     { icon: Music, label: "Music", path: "/music" },
   ];
@@ -110,7 +100,7 @@ export default function Sidebar() {
         <div className="sidebar-inner">
           {/* Logo */}
           <Link to="/home" className="sidebar-logo">
-            <Camera size={28} className="sidebar-logo-icon" />
+            <img src="/histogram.png" alt="" className="sidebar-logo-img" />
             {!collapsed && <span className="sidebar-logo-text">Histogram</span>}
           </Link>
 
@@ -118,19 +108,6 @@ export default function Sidebar() {
           <nav className="sidebar-nav">
             {navItems.map((item) => {
               const Icon = item.icon;
-              if (item.action) {
-                return (
-                  <button
-                    key={item.label}
-                    className="sidebar-nav-item"
-                    onClick={item.action}
-                    title={item.label}
-                  >
-                    <Icon size={24} />
-                    {!collapsed && <span>{item.label}</span>}
-                  </button>
-                );
-              }
               return (
                 <Link
                   key={item.label}
@@ -143,6 +120,8 @@ export default function Sidebar() {
                 </Link>
               );
             })}
+
+
           </nav>
 
           {/* Profile + More */}
@@ -174,7 +153,22 @@ export default function Sidebar() {
 
               {showMore && (
                 <div className="sidebar-more-menu">
-                  <button className="sidebar-more-item" onClick={handleLogout}>
+                  <button
+                    className="sidebar-more-item"
+                    onClick={() => { toggle(); setShowMore(false); }}
+                  >
+                    {dark ? <Sun size={16} /> : <Moon size={16} />}
+                    {dark ? "Light mode" : "Dark mode"}
+                  </button>
+                  <Link
+                    to={`/profile/${user.uid}`}
+                    className="sidebar-more-item"
+                    onClick={() => setShowMore(false)}
+                  >
+                    <Settings size={16} />
+                    Settings
+                  </Link>
+                  <button className="sidebar-more-item sidebar-more-logout" onClick={handleLogout}>
                     <LogOut size={16} />
                     Log out
                   </button>
@@ -202,11 +196,11 @@ export default function Sidebar() {
         <Link to="/explore" className={`mobile-bar-item ${isActive("/explore") ? "active" : ""}`}>
           <Compass size={24} fill={isActive("/explore") ? "currentColor" : "none"} />
         </Link>
-        <button className="mobile-bar-item mobile-bar-create" onClick={handleNewPost}>
-          <PlusSquare size={24} />
-        </button>
-        <Link to="/reels" className={`mobile-bar-item ${isActive("/reels") ? "active" : ""}`}>
-          <Film size={24} />
+        <Link to="/create" className="mobile-bar-item mobile-bar-create">
+          <PlusSquare size={26} />
+        </Link>
+        <Link to="/notifications" className={`mobile-bar-item ${isActive("/notifications") ? "active" : ""}`}>
+          <Heart size={24} fill={isActive("/notifications") ? "currentColor" : "none"} />
         </Link>
         <Link
           to={`/profile/${user.uid}`}
@@ -221,11 +215,6 @@ export default function Sidebar() {
           )}
         </Link>
       </nav>
-
-      {/* Mobile overlay for open menus */}
-      {mobileOpen && (
-        <div className="sidebar-mobile-overlay" onClick={() => setMobileOpen(false)} />
-      )}
     </>
   );
 }

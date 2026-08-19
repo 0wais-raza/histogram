@@ -27,8 +27,7 @@ export default function Login() {
     } catch (err) {
       const msg = err.message.replace("Firebase: ", "");
       alertError("Login failed", friendlyAuthError(msg));
-      // Don't leave user stuck — redirect to home after error
-      setTimeout(() => navigate("/"), 2000);
+      // Don't redirect on error — let user fix their input
     } finally {
       setLoading(false);
     }
@@ -43,7 +42,6 @@ export default function Login() {
       const msg = err.message.replace("Firebase: ", "");
       if (!msg.includes("popup-closed-by-user")) {
         alertError("Google sign-in failed", friendlyAuthError(msg));
-        setTimeout(() => navigate("/"), 2000);
       }
     } finally {
       setGoogleLoading(false);
@@ -126,9 +124,11 @@ export default function Login() {
           </button>
         </div>
 
-        <button type="submit" disabled={loading}>
+        <button type="submit" disabled={loading} className="auth-submit-btn">
           {loading ? (
-            "Logging in..."
+            <span className="setup-btn-loading">
+              <span className="setup-btn-spinner" /> Logging in...
+            </span>
           ) : (
             <>
               <LogIn size={18} />
@@ -145,7 +145,7 @@ export default function Login() {
           Forgot password?
         </button>
 
-        <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "14px" }}>
+        <p className="auth-switch-text">
           Don't have an account?{" "}
           <Link to="/signup">Sign up</Link>
         </p>

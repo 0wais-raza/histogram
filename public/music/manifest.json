@@ -1,0 +1,12 @@
+[
+  { "id": "m1", "name": "Real Gone", "artist": "any1", "file": "Real Gone.mp3", "genre": "Cinema" },
+  { "id": "m2", "name": "Chubina", "artist": "Synthwave", "file": "chubina.mp3", "genre": "nostalgia" },
+  { "id": "m3", "name": "Living Mice", "artist": "Ambient", "file": "living.mp3", "genre": "nostalgia" },
+  { "id": "m9", "name": "Aria math", "artist": "Farlands", "file": "aria.mp3", "genre": "Cinema" },
+  { "id": "m10", "name": "insterteller", "artist": "black hole", "file": "inster.mp3", "genre": "Cinema" },
+  { "id": "m4", "name": "Electric Dreams", "artist": "Electronic", "file": "electric-dreams.mp3", "genre": "Electronic" },
+  { "id": "m5", "name": "Morning Coffee", "artist": "Jazz Hop", "file": "morning-coffee.mp3", "genre": "Jazz" },
+  { "id": "m6", "name": "City Lights", "artist": "R&B", "file": "city-lights.mp3", "genre": "R&B" },
+  { "id": "m7", "name": "Summer Breeze", "artist": "Tropical", "file": "summer-breeze.mp3", "genre": "Pop" },
+  { "id": "m8", "name": "Neon Nights", "artist": "Retrowave", "file": "neon-nights.mp3", "genre": "Synthwave" }
+]

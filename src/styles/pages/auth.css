@@ -72,6 +72,19 @@
   background: var(--border);
 }
 
+/* ── Auth Switch Text ── */
+.auth-switch-text {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+.auth-switch-text a {
+  color: var(--accent-bright);
+  font-weight: 600;
+}
+
 /* ════════════════════════════════════════
    Responsive — Mobile (≤640px)
    ════════════════════════════════════════ */

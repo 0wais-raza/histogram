@@ -14,6 +14,11 @@
   transition: margin-left 0.25s var(--ease-out);
 }
 
+.app-layout.no-sidebar .app-main,
+.app-main-full {
+  margin-left: 0 !important;
+}
+
 .sidebar-collapsed ~ .app-main {
   margin-left: 72px;
 }
@@ -72,6 +77,14 @@
   flex-shrink: 0;
 }
 
+.sidebar-logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .sidebar-logo-text {
   font-size: 20px;
   font-weight: 800;
@@ -124,6 +137,49 @@
   flex-shrink: 0;
   width: 24px;
   height: 24px;
+}
+
+/* ── Create Button (Prominent) ── */
+.sidebar-create-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin: 8px 0 4px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  letter-spacing: 0.3px;
+}
+
+.sidebar-create-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(134, 59, 255, 0.3);
+}
+
+.sidebar-create-btn:active {
+  transform: translateY(0);
+}
+
+.sidebar-create-btn-collapsed {
+  margin: 8px 0 4px;
+  justify-content: center;
+  color: var(--accent-bright);
+  background: rgba(134, 59, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.sidebar-create-btn-collapsed:hover {
+  background: rgba(134, 59, 255, 0.15);
 }
 
 /* ── Sidebar Bottom ── */
@@ -194,17 +250,28 @@
   padding: 12px 16px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--error);
+  color: var(--text-secondary);
   background: none;
   border: none;
   width: 100%;
   cursor: pointer;
   font-family: inherit;
   transition: background 0.15s;
+  text-decoration: none;
 }
 
 .sidebar-more-item:hover {
+  background: rgba(134, 59, 255, 0.08);
+  color: var(--text);
+}
+
+.sidebar-more-logout {
+  color: var(--error);
+}
+
+.sidebar-more-logout:hover {
   background: rgba(248, 113, 113, 0.08);
+  color: var(--error);
 }
 
 /* ── Collapse Button ── */
@@ -281,6 +348,13 @@
 
 .landing-header-logo svg {
   color: var(--accent-bright);
+}
+
+.landing-header-logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
 }
 
 .landing-header-actions {
@@ -404,124 +478,6 @@
 }
 
 /* ════════════════════════════════════════
-   Reels Page
-   ════════════════════════════════════════ */
-
-.reels-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.reel-card {
-  position: relative;
-  aspect-ratio: 9/16;
-  max-height: 70vh;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-}
-
-.reel-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.reel-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-}
-
-.reel-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(transparent 60%, rgba(0, 0, 0, 0.7));
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 20px;
-}
-
-.reel-actions {
-  position: absolute;
-  right: 16px;
-  bottom: 120px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  align-items: center;
-}
-
-.reel-action {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.reel-action:hover {
-  transform: scale(1.1);
-}
-
-.reel-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.reel-author {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #fff;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.reel-author-pic {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-}
-
-.reel-author-fallback {
-  background: rgba(134, 59, 255, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 13px;
-  color: #fff;
-}
-
-.reel-caption {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.85);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.reel-music {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-/* ════════════════════════════════════════
    Music Page
    ════════════════════════════════════════ */
 
@@ -641,6 +597,75 @@
   font-size: 12px;
   color: var(--muted);
   font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Now Playing Bar ── */
+.music-now-playing {
+  position: relative;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(134, 59, 255, 0.12), rgba(71, 191, 255, 0.08));
+  border: 1px solid var(--accent);
+  overflow: hidden;
+}
+
+.music-now-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+  transition: width 0.3s linear;
+  border-radius: 0 2px 2px 0;
+}
+
+.music-now-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.music-now-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.music-now-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-now-artist {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.music-now-time {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.music-now-mute {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.music-now-mute:hover {
+  color: var(--text);
 }
 
 /* ════════════════════════════════════════
@@ -930,6 +955,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .feed-post-music-name {
@@ -941,6 +967,30 @@
 .feed-post-music-artist {
   font-size: 11px;
   color: var(--muted);
+}
+
+.feed-post-music-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.feed-post-music-toggle.active {
+  color: var(--accent-bright);
+}
+
+.feed-post-music-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent-bright);
 }
 
 /* ════════════════════════════════════════
@@ -1102,6 +1152,73 @@
 }
 
 /* ════════════════════════════════════════
+   Post Detail Modal
+   ════════════════════════════════════════ */
+
+.post-detail-modal {
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.post-detail-content {
+  margin: 12px 0;
+}
+
+.post-detail-image {
+  width: 100%;
+  border-radius: var(--radius-md);
+  max-height: 500px;
+  object-fit: cover;
+  display: block;
+}
+
+/* ════════════════════════════════════════
+   Saved Post Author Link
+   ════════════════════════════════════════ */
+
+.saved-post-author-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.saved-post-author-link:hover {
+  color: var(--text-secondary);
+}
+
+.saved-post-author-pic {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ════════════════════════════════════════
+   Auth Submit Button
+   ════════════════════════════════════════ */
+
+.auth-submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.auth-switch-text {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* ════════════════════════════════════════
    Responsive — Mobile (≤768px)
    ════════════════════════════════════════ */
 
@@ -1195,7 +1312,18 @@
     gap: 2px;
   }
 
-  .reel-card {
-    max-height: 60vh;
+  .music-now-inner {
+    flex-wrap: wrap;
+  }
+
+  .music-now-time {
+    display: none;
+  }
+
+  .post-detail-modal {
+    max-width: 100%;
+    margin: 0;
+    max-height: 100vh;
+    border-radius: 0;
   }
 }

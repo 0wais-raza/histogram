@@ -2,13 +2,17 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   doc, query, collection, where, orderBy,
-  deleteDoc, onSnapshot,
+  deleteDoc, onSnapshot, getDoc, setDoc, serverTimestamp, increment, updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import EditProfile from "../components/EditProfile";
-import { ImageIcon, Trash2, UserPlus, UserMinus } from "lucide-react";
+import InlineComments from "../components/InlineComments";
+import {
+  ImageIcon, Trash2, UserPlus, UserMinus, Heart,
+  MessageCircle, Bookmark, X, Music, Volume2, VolumeX,
+} from "lucide-react";
 import { ProfileSkeleton } from "../components/LoadingSkeleton";
 import { alertConfirm, alertError } from "../utils/alerts";
 
@@ -24,6 +28,12 @@ export default function Profile() {
   const isOwner = user?.uid === uid;
   const [realFollowerCount, setRealFollowerCount] = useState(null);
   const [realFollowingCount, setRealFollowingCount] = useState(null);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [authorPic, setAuthorPic] = useState("");
+  const [likedPosts, setLikedPosts] = useState({});
+  const [likeCounts, setLikeCounts] = useState({});
+  const [savedPosts, setSavedPosts] = useState({});
+  const [mutedPosts, setMutedPosts] = useState({});
 
   // ── Realtime profile ──
   useEffect(() => {
@@ -39,7 +49,11 @@ export default function Profile() {
   useEffect(() => {
     const q = query(collection(db, "posts"), where("authorId", "==", uid), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      setPosts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const postList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setPosts(postList);
+      const counts = {};
+      postList.forEach((p) => { counts[p.id] = p.likesCount || 0; });
+      setLikeCounts((prev) => ({ ...prev, ...counts }));
     });
     return unsub;
   }, [uid]);
@@ -66,6 +80,27 @@ export default function Profile() {
     return unsub;
   }, [uid, user, isOwner]);
 
+  // ── Fetch author pic for modal ──
+  useEffect(() => {
+    if (!uid) return;
+    getDoc(doc(db, "users", uid)).then((snap) => {
+      if (snap.exists() && snap.data().profilePic) setAuthorPic(snap.data().profilePic);
+    });
+  }, [uid]);
+
+  // ── Check liked/saved for selected post ──
+  useEffect(() => {
+    if (!selectedPost || !user) return;
+    const likeId = `${user.uid}_${selectedPost.id}`;
+    const unsubLike = onSnapshot(doc(db, "postLikes", likeId), (snap) => {
+      setLikedPosts((prev) => ({ ...prev, [selectedPost.id]: snap.exists() }));
+    });
+    const unsubSave = onSnapshot(doc(db, "postSaves", `${user.uid}_${selectedPost.id}`), (snap) => {
+      setSavedPosts((prev) => ({ ...prev, [selectedPost.id]: snap.exists() }));
+    });
+    return () => { unsubLike(); unsubSave(); };
+  }, [selectedPost?.id, user]);
+
   async function handleFollow() {
     setFollowLoading(true);
     try { await followUser(uid); }
@@ -76,6 +111,36 @@ export default function Profile() {
     if (!(await alertConfirm("Delete post?", "This action cannot be undone."))) return;
     try { await deleteDoc(doc(db, "posts", post.id)); }
     catch (err) { alertError("Delete failed", err.message); }
+  }
+
+  function handleLikePost(post) {
+    const isLiked = likedPosts[post.id];
+    setLikeCounts((prev) => ({
+      ...prev,
+      [post.id]: isLiked ? Math.max(0, (prev[post.id] || post.likesCount || 1) - 1) : (prev[post.id] || post.likesCount || 0) + 1,
+    }));
+    try {
+      if (isLiked) {
+        deleteDoc(doc(db, "postLikes", `${user.uid}_${post.id}`));
+        updateDoc(doc(db, "posts", post.id), { likesCount: increment(-1) }).catch(() => {});
+      } else {
+        setDoc(doc(db, "postLikes", `${user.uid}_${post.id}`), { postId: post.id, userId: user.uid, createdAt: serverTimestamp() });
+        updateDoc(doc(db, "posts", post.id), { likesCount: increment(1) }).catch(() => {});
+      }
+    } catch {}
+  }
+
+  async function handleSavePost(post) {
+    const isSaved = savedPosts[post.id];
+    try {
+      if (isSaved) {
+        await deleteDoc(doc(db, "postSaves", `${user.uid}_${post.id}`));
+        setSavedPosts((prev) => ({ ...prev, [post.id]: false }));
+      } else {
+        await setDoc(doc(db, "postSaves", `${user.uid}_${post.id}`), { postId: post.id, userId: user.uid, createdAt: new Date().toISOString() });
+        setSavedPosts((prev) => ({ ...prev, [post.id]: true }));
+      }
+    } catch {}
   }
 
   usePageAnimations("profile");
@@ -116,18 +181,89 @@ export default function Profile() {
         {posts.length === 0 ? (
           <div className="profile-empty"><ImageIcon size={48} strokeWidth={1.5} /><p>{isOwner ? "No posts yet — create your first!" : "No posts yet."}</p></div>
         ) : posts.map((p) => (
-          <div key={p.id} className="grid-item-wrapper">
+          <div key={p.id} className="grid-item-wrapper" onClick={() => setSelectedPost(p)}>
             {(p.imageUrls?.[0] || p.imageUrl) ? (
               <img src={p.imageUrls?.[0] || p.imageUrl} alt={p.caption || "Post"} className="grid-item" />
             ) : (
               <div className="grid-item grid-item-text">{p.caption || "Text post"}</div>
             )}
+            <div className="grid-item-overlay">
+              <span><Heart size={14} /> {likeCounts[p.id] ?? p.likesCount ?? 0}</span>
+              <span><MessageCircle size={14} /> {p.commentsCount ?? 0}</span>
+            </div>
             {isOwner && (
-              <button className="grid-item-delete" onClick={() => handleDeletePost(p)} title="Delete post"><Trash2 size={14} /></button>
+              <button className="grid-item-delete" onClick={(e) => { e.stopPropagation(); handleDeletePost(p); }} title="Delete post"><Trash2 size={14} /></button>
             )}
           </div>
         ))}
       </div>
+
+      {/* Post Detail Modal */}
+      {selectedPost && (
+        <div className="modal-backdrop" onClick={() => setSelectedPost(null)}>
+          <div className="modal post-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="create-post-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {authorPic ? (
+                  <img src={authorPic} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
+                ) : (
+                  <div className="feed-post-avatar" style={{ width: 32, height: 32, fontSize: 12 }}>
+                    {profile.username?.[0]?.toUpperCase() || "?"}
+                  </div>
+                )}
+                <span style={{ fontWeight: 600, fontSize: 14 }}>@{profile.username}</span>
+              </div>
+              <button type="button" className="btn icon-only" onClick={() => setSelectedPost(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="post-detail-content">
+              {selectedPost.imageUrls?.length > 0 ? (
+                <img src={selectedPost.imageUrls[0]} alt="" className="post-detail-image" />
+              ) : selectedPost.imageUrl ? (
+                <img src={selectedPost.imageUrl} alt="" className="post-detail-image" />
+              ) : null}
+
+              {selectedPost.caption && (
+                <p className="feed-post-caption" style={{ padding: "12px 0" }}>{selectedPost.caption}</p>
+              )}
+
+              {selectedPost.musicName && (
+                <div className="feed-post-music" style={{ margin: "0 -32px", padding: "10px 32px" }}>
+                  <div className="feed-post-music-icon"><Music size={14} /></div>
+                  <div className="feed-post-music-info">
+                    <span className="feed-post-music-name">{selectedPost.musicName}</span>
+                    {selectedPost.musicArtist && <span className="feed-post-music-artist">{selectedPost.musicArtist}</span>}
+                  </div>
+                  <button
+                    className={`feed-post-music-toggle ${mutedPosts[selectedPost.id] ? "" : "active"}`}
+                    onClick={() => setMutedPosts((prev) => ({ ...prev, [selectedPost.id]: !prev[selectedPost.id] }))}
+                  >
+                    {mutedPosts[selectedPost.id] ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                  </button>
+                </div>
+              )}
+
+              <div className="feed-post-actions" style={{ borderTop: "1px solid var(--border)", padding: "8px 0" }}>
+                <button className={`feed-post-action-btn ${likedPosts[selectedPost.id] ? "liked" : ""}`} onClick={() => handleLikePost(selectedPost)}>
+                  <Heart size={20} fill={likedPosts[selectedPost.id] ? "var(--error)" : "none"} />
+                  {(likeCounts[selectedPost.id] ?? selectedPost.likesCount ?? 0) > 0 && <span>{likeCounts[selectedPost.id] ?? selectedPost.likesCount}</span>}
+                </button>
+                <button className="feed-post-action-btn active">
+                  <MessageCircle size={20} />
+                  {(selectedPost.commentsCount ?? 0) > 0 && <span>{selectedPost.commentsCount}</span>}
+                </button>
+                <button className={`feed-post-action-btn ${savedPosts[selectedPost.id] ? "saved" : ""}`} onClick={() => handleSavePost(selectedPost)}>
+                  <Bookmark size={20} fill={savedPosts[selectedPost.id] ? "var(--cyan)" : "none"} />
+                </button>
+              </div>
+            </div>
+
+            <InlineComments post={selectedPost} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
