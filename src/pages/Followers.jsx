@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   collection,
   query,
   where,
-  getDocs,
+  onSnapshot,
   doc,
   getDoc,
 } from "firebase/firestore";
@@ -20,51 +20,62 @@ export default function Followers() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("followers");
   const [followingState, setFollowingState] = useState({});
+  const followUnsubRef = useRef(new Map());
 
+  // Real-time follower/following list
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const field = tab === "followers" ? "followingId" : "followerId";
-        const resultField = tab === "followers" ? "followerId" : "followingId";
+    setLoading(true);
+    const field = tab === "followers" ? "followingId" : "followerId";
+    const resultField = tab === "followers" ? "followerId" : "followingId";
 
-        const snap = await getDocs(
-          query(collection(db, "follows"), where(field, "==", uid))
-        );
+    // Cleanup previous follow listeners
+    for (const unsubFn of followUnsubRef.current.values()) unsubFn();
+    followUnsubRef.current.clear();
 
-        const uids = snap.docs.map((d) => d.data()[resultField]);
-        const userData = [];
+    const q = query(collection(db, "follows"), where(field, "==", uid));
+    const unsub = onSnapshot(q, async (snap) => {
+      const uids = snap.docs.map((d) => d.data()[resultField]);
+      const userData = [];
 
-        for (const id of uids) {
-          const cacheKey = `author_${id}`;
-          let data;
-          const cached = localStorage.getItem(cacheKey);
-          if (cached) {
-            data = JSON.parse(cached);
-          } else {
+      for (const id of uids) {
+        let data;
+        const cached = localStorage.getItem(`author_${id}`);
+        if (cached) {
+          data = JSON.parse(cached);
+        } else {
+          try {
             const userSnap = await getDoc(doc(db, "users", id));
             if (userSnap.exists()) {
               data = { uid: id, ...userSnap.data() };
-              localStorage.setItem(cacheKey, JSON.stringify(data));
             }
-          }
-          if (data) userData.push(data);
-
-          if (user && id !== user.uid) {
-            const followSnap = await getDoc(doc(db, "follows", `${user.uid}_${id}`));
-            setFollowingState((prev) => ({ ...prev, [id]: followSnap.exists() }));
-          }
+          } catch {}
         }
-        setUsers(userData);
-      } catch {}
-      finally { setLoading(false); }
-    }
-    load();
+        if (data) userData.push(data);
+
+        if (user && id !== user.uid && !followUnsubRef.current.has(id)) {
+          const fUnsub = onSnapshot(doc(db, "follows", `${user.uid}_${id}`), (followSnap) => {
+            setFollowingState((prev) => ({ ...prev, [id]: followSnap.exists() }));
+          }, () => {});
+          followUnsubRef.current.set(id, fUnsub);
+        }
+      }
+      setUsers(userData);
+      setLoading(false);
+    }, () => {
+      setLoading(false);
+    });
+
+    return () => {
+      unsub();
+      const map = followUnsubRef.current;
+      for (const unsubFn of map.values()) unsubFn();
+      map.clear();
+    };
   }, [uid, tab, user]);
 
   async function handleFollow(targetUid) {
-    const result = await followUser(targetUid);
-    setFollowingState((prev) => ({ ...prev, [targetUid]: result }));
+    await followUser(targetUid);
+    // Following state updates via onSnapshot listener
   }
 
   usePageAnimations("home");

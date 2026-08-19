@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -43,11 +43,15 @@ export default function SetupProfile({ profile, onComplete }) {
 
   const fileRef = useRef(null);
 
-  function handleClose() {
-    alertError(
-      "Profile required",
-      "You need to pick a username to continue."
-    );
+  // Lock body scroll when modal opens
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  function handleClose(e) {
+    // Prevent backdrop click from closing — profile setup is required
+    if (e) e.stopPropagation();
   }
 
   function handleFileChange(e) {
@@ -78,29 +82,40 @@ export default function SetupProfile({ profile, onComplete }) {
     }
 
     setUploading(true);
-    try {
-      // Run username claim + image upload in parallel
-      const tasks = [claimUsername(username)];
+    let profilePic = profile?.profilePic || "";
+    let usernameClaimed = false;
 
-      let profilePic = profile?.profilePic || "";
+    try {
+      // Step 1: Claim username first
+      await claimUsername(username);
+      usernameClaimed = true;
+
+      // Step 2: Upload image if provided
       if (file) {
-        tasks.push(uploadImage(file));
+        profilePic = await uploadImage(file);
       }
 
-      const results = await Promise.all(tasks);
-      if (file) profilePic = results[1];
-
+      // Step 3: Update bio and profile pic
       await updateDoc(doc(db, "users", user.uid), {
         bio: bio.trim(),
         profilePic,
       });
 
+      // Success — reset body scroll and notify parent
+      document.body.style.overflow = "";
       onComplete();
     } catch (err) {
-      alertError(
-        "Setup failed",
-        err.message.replace("Firebase: ", "") || "Something went wrong."
-      );
+      // If username was already claimed but something else failed,
+      // still complete — the user can edit bio/pic later
+      if (usernameClaimed) {
+        document.body.style.overflow = "";
+        onComplete();
+      } else {
+        alertError(
+          "Setup failed",
+          err.message.replace("Firebase: ", "") || "Something went wrong."
+        );
+      }
     } finally {
       setUploading(false);
     }

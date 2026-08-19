@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
-  doc, getDoc, query, collection, where, orderBy,
+  doc, query, collection, where, orderBy,
   deleteDoc, onSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
@@ -102,8 +102,8 @@ export default function Profile() {
           <div className="profile-empty"><ImageIcon size={48} strokeWidth={1.5} /><p>{isOwner ? "No posts yet — create your first!" : "No posts yet."}</p></div>
         ) : posts.map((p) => (
           <div key={p.id} className="grid-item-wrapper">
-            {p.imageUrl ? (
-              <img src={p.imageUrl} alt={p.caption || "Post"} className="grid-item" />
+            {(p.imageUrls?.[0] || p.imageUrl) ? (
+              <img src={p.imageUrls?.[0] || p.imageUrl} alt={p.caption || "Post"} className="grid-item" />
             ) : (
               <div className="grid-item grid-item-text">{p.caption || "Text post"}</div>
             )}

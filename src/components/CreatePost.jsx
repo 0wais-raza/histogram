@@ -1,10 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  doc,
   addDoc,
   collection,
   serverTimestamp,
-  updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";

@@ -14,7 +14,7 @@ export const staticPosts = [
     linkLabel: "Learn more",
   },
   {
-    id: "ad-histogram-main",
+    id: "ad-meeral-collection",
     type: "ad",
     image: "/info.webp",
     caption: "A Real app for real shop use! made by me! MongoDB used!",

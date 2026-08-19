@@ -26,9 +26,11 @@ export default function InlineComments({ post }) {
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const textRef = useRef(text);
+  const fetchedPicsRef = useRef(new Set());
   textRef.current = text;
 
   useEffect(() => {
+    fetchedPicsRef.current.clear();
     const q = query(
       collection(db, "posts", post.id, "comments"),
       orderBy("createdAt", "asc")
@@ -37,10 +39,11 @@ export default function InlineComments({ post }) {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setComments(list);
 
-      // Batch-fetch author pics
+      // Batch-fetch author pics (only for new UIDs)
       const uids = [...new Set(list.map((c) => c.authorId).filter(Boolean))];
       uids.forEach(async (uid) => {
-        if (authorPics[uid]) return;
+        if (fetchedPicsRef.current.has(uid)) return;
+        fetchedPicsRef.current.add(uid);
         const cacheKey = `pic_${uid}`;
         try {
           const cached = localStorage.getItem(cacheKey);
@@ -81,9 +84,10 @@ export default function InlineComments({ post }) {
         text: trimmed,
         createdAt: serverTimestamp(),
       });
-      await updateDoc(doc(db, "posts", post.id), {
+      // Increment count separately — don't let count failure break the comment
+      updateDoc(doc(db, "posts", post.id), {
         commentsCount: increment(1),
-      });
+      }).catch(() => {});
     } catch (err) {
       // Restore text on error
       setText(trimmed);

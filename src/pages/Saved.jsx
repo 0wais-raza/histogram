@@ -12,10 +12,12 @@ import { FeedSkeleton } from "../components/LoadingSkeleton";
 export default function Saved() {
   const { user } = useAuth();
   const [savedPosts, setSavedPosts] = useState([]);
+  const [authorData, setAuthorData] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     async function load() {
       setLoading(true);
       try {
@@ -23,7 +25,7 @@ export default function Saved() {
           query(collection(db, "postSaves"), where("userId", "==", user.uid), orderBy("createdAt", "desc"))
         );
         const postIds = savesSnap.docs.map((d) => d.data().postId);
-        if (postIds.length === 0) { setLoading(false); return; }
+        if (postIds.length === 0) { if (!cancelled) { setSavedPosts([]); setLoading(false); } return; }
 
         // Fetch posts in batches of 10 (Firestore limit)
         const allPosts = [];
@@ -34,11 +36,27 @@ export default function Saved() {
           );
           allPosts.push(...postsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         }
+        if (cancelled) return;
         setSavedPosts(allPosts);
+
+        // Fetch author data
+        const uids = [...new Set(allPosts.map((p) => p.authorId).filter(Boolean))];
+        const data = {};
+        for (const uid of uids) {
+          try {
+            const snap = await getDoc(doc(db, "users", uid));
+            if (snap.exists()) {
+              const d = snap.data();
+              data[uid] = { profilePic: d.profilePic || "", username: d.username || "" };
+            }
+          } catch {}
+        }
+        if (!cancelled && Object.keys(data).length) setAuthorData(data);
       } catch {}
-      finally { setLoading(false); }
+      finally { if (!cancelled) setLoading(false); }
     }
     load();
+    return () => { cancelled = true; };
   }, [user]);
 
   usePageAnimations("home");
@@ -56,15 +74,26 @@ export default function Saved() {
         </div>
       ) : (
         <div className="feed">
-          {savedPosts.map((post) => (
-            <div key={post.id} className="feed-post">
-              {post.imageUrl && <img src={post.imageUrl} alt="" className="feed-post-image" />}
-              {post.caption && <p className="feed-post-caption">{post.caption}</p>}
-              <div className="feed-post-caption" style={{ borderTop: "1px solid var(--border)", paddingTop: 8, fontSize: 12, color: "var(--muted)" }}>
-                Posted by {post.authorName}
+          {savedPosts.map((post) => {
+            const ad = authorData[post.authorId] || {};
+            const images = post.imageUrls?.length ? post.imageUrls : (post.imageUrl ? [post.imageUrl] : []);
+            return (
+              <div key={post.id} className="feed-post">
+                {images.length > 0 && <img src={images[0]} alt="" className="feed-post-image" />}
+                {post.caption && <p className="feed-post-caption">{post.caption}</p>}
+                <Link
+                  to={`/profile/${post.authorId}`}
+                  className="feed-post-caption"
+                  style={{ borderTop: "1px solid var(--border)", paddingTop: 8, fontSize: 12, color: "var(--muted)", textDecoration: "none", display: "block" }}
+                >
+                  {ad.profilePic ? (
+                    <img src={ad.profilePic} alt="" style={{ width: 16, height: 16, borderRadius: "50%", verticalAlign: "middle", marginRight: 6 }} />
+                  ) : null}
+                  Posted by {ad.username ? `@${ad.username}` : post.authorName}
+                </Link>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -11,7 +11,7 @@
   backdrop-filter: blur(24px) saturate(1.8);
   -webkit-backdrop-filter: blur(24px) saturate(1.8);
   border-bottom: 1px solid var(--glass-border);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 24px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 24px rgba(0, 0, 0, 0.2);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -136,15 +136,22 @@
   -webkit-backdrop-filter: blur(24px) saturate(1.8);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   z-index: 60;
   overflow: hidden;
   animation: dropdownIn 0.15s var(--ease-out);
 }
 
 @keyframes dropdownIn {
-  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .nav-dropdown-header {
@@ -343,15 +350,15 @@
 
 /* ── Google Button ── */
 .google-btn {
-  background: rgba(255,255,255,0.06) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
   border: 1px solid var(--glass-border) !important;
   color: var(--text) !important;
   font-weight: 500 !important;
 }
 
 .google-btn:hover {
-  background: rgba(255,255,255,0.1) !important;
-  border-color: rgba(255,255,255,0.15) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 /* ── Auth Divider ── */
@@ -622,8 +629,13 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .modal {
@@ -700,6 +712,8 @@
 
 .setup-profile-modal {
   max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .setup-profile-header {
@@ -777,6 +791,26 @@
 .setup-submit {
   width: 100%;
   justify-content: center;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  text-decoration: none;
+  transition: all 0.2s var(--ease-out);
+  cursor: pointer;
+}
+
+.setup-submit {
+  border-color: var(--border-glow);
 }
 
 /* ════════════════════════════════════════
@@ -843,8 +877,13 @@
   }
 
   @keyframes dropdownUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+    from {
+      transform: translateY(100%);
+    }
+
+    to {
+      transform: translateY(0);
+    }
   }
 
   .nav-dropdown-header {

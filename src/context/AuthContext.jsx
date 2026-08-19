@@ -16,10 +16,6 @@ import {
   runTransaction,
   serverTimestamp,
   getDoc,
-  getDocs,
-  query,
-  where,
-  collection,
   increment,
 } from "firebase/firestore";
 import { auth, db } from "../firebase/config";

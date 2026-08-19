@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   doc, getDoc, collection, query, orderBy, limit,
@@ -21,7 +21,7 @@ import {
 import { alertConfirm, alertError, alertPrompt } from "../utils/alerts";
 
 export default function Home() {
-  const { user, followUser, isFollowing } = useAuth();
+  const { user, followUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -38,26 +38,21 @@ export default function Home() {
   const [doubleTapHeart, setDoubleTapHeart] = useState(null);
   const lastTap = useRef({});
 
-  // ── Author data fetcher (with cache) ──
-  const loadAuthorData = useCallback(async (postList) => {
+  // ── Author data fetcher ──
+  async function loadAuthorData(postList) {
     const uids = [...new Set(postList.map((p) => p.authorId).filter(Boolean))];
     const data = {};
     for (const uid of uids) {
-      const cacheKey = `author_${uid}`;
       try {
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) { data[uid] = JSON.parse(cached); continue; }
         const snap = await getDoc(doc(db, "users", uid));
         if (snap.exists()) {
           const d = snap.data();
-          const entry = { profilePic: d.profilePic || "", username: d.username || "" };
-          localStorage.setItem(cacheKey, JSON.stringify(entry));
-          data[uid] = entry;
+          data[uid] = { profilePic: d.profilePic || "", username: d.username || "" };
         }
       } catch {}
     }
     if (Object.keys(data).length) setAuthorData((prev) => ({ ...prev, ...data }));
-  }, []);
+  }
 
   // ── Profile check ──
   useEffect(() => {
@@ -80,6 +75,7 @@ export default function Home() {
   useEffect(() => {
     if (checking || !user) return;
     setLoadingPosts(true);
+    const followUnsubs = new Map();
 
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(30));
     const unsub = onSnapshot(q, async (snap) => {
@@ -88,11 +84,23 @@ export default function Home() {
       setLoadingPosts(false);
       loadAuthorData(fetched);
 
-      // Load follow states for unique authors
+      // ── Realtime follow states for unique authors ──
       const authorUids = [...new Set(fetched.map((p) => p.authorId).filter((id) => id !== user.uid))];
+      // Clean up old listeners for authors no longer in feed
+      for (const [uid, unsubFn] of followUnsubs) {
+        if (!authorUids.includes(uid)) {
+          unsubFn();
+          followUnsubs.delete(uid);
+        }
+      }
+      // Subscribe to new authors
       for (const uid of authorUids) {
-        const f = await isFollowing(uid);
-        setFollowingState((prev) => ({ ...prev, [uid]: f }));
+        if (!followUnsubs.has(uid)) {
+          const fUnsub = onSnapshot(doc(db, "follows", `${user.uid}_${uid}`), (fsnap) => {
+            setFollowingState((prev) => ({ ...prev, [uid]: fsnap.exists() }));
+          }, () => {});
+          followUnsubs.set(uid, fUnsub);
+        }
       }
 
       // Load likes/saves
@@ -110,8 +118,11 @@ export default function Home() {
       }
     }, () => { setLoadingPosts(false); });
 
-    return unsub;
-  }, [checking, user, loadAuthorData, isFollowing]);
+    return () => {
+      unsub();
+      for (const unsubFn of followUnsubs.values()) unsubFn();
+    };
+  }, [checking, user]);
 
   // ── Navbar bridge ──
   useEffect(() => {
