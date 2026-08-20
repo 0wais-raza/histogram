@@ -21,8 +21,8 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
 const MAX_IMAGES = 5;
 
-// Crop preset — Fixed 4:5 Instagram portrait ratio only
-const CROP_RATIO = 4 / 5; // Instagram portrait
+// Crop preset — Fixed 4:3 landscape ratio
+const CROP_RATIO = 4 / 3; // Landscape
 
 // Crop an image File using canvas — accurate viewport-to-natural mapping
 function cropImageFile(file, cropData, aspectKey) {
@@ -32,7 +32,7 @@ function cropImageFile(file, cropData, aspectKey) {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
-      // Always use 4:5 ratio
+      // Always use 4:3 ratio
       const ratio = CROP_RATIO;
 
       // Viewport dimensions of the crop area (matches CSS .crop-viewport)
@@ -57,8 +57,8 @@ function cropImageFile(file, cropData, aspectKey) {
       const natPerVpX = (img.naturalWidth / imgRenderW) / scale;
       const natPerVpY = (img.naturalHeight / imgRenderH) / scale;
 
-      // Fixed ratio 4:5 — match CSS .crop-frame-portrait dimensions
-      const frameH = Math.min(vpH * 0.55, 400);
+      // Fixed ratio 4:3 — match CSS .crop-frame-portrait dimensions
+      const frameH = Math.min(vpH * 0.50, 360);
       const frameW = frameH * ratio;
 
       // Crop frame center in viewport
@@ -258,7 +258,7 @@ export default function CreatePost() {
   function applyCrop() {
     setCropStates((prev) => ({
       ...prev,
-      [cropIndex]: { ...cropData, aspect: "4:5" },
+      [cropIndex]: { ...cropData, aspect: "4:3" },
     }));
     setCropIndex(null);
   }
@@ -485,7 +485,7 @@ export default function CreatePost() {
               {previews.map((src, idx) => (
                 <div key={idx} className="create-post-slide">
                   <img src={src} alt={`Preview ${idx + 1}`} />
-                  {cropStates[idx] && <div className="create-post-cropped-badge"><Crop size={12} /> {cropStates[idx].aspect || "4:5"}</div>}
+                  {cropStates[idx] && <div className="create-post-cropped-badge"><Crop size={12} /> {cropStates[idx].aspect || "4:3"}</div>}
                   <button type="button" className="create-post-remove" onClick={() => removeImage(idx)}>
                     <X size={16} />
                   </button>

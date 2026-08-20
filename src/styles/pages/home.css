@@ -610,16 +610,14 @@
 
 .create-post-page {
   max-width: 560px;
-  max-height: 100vh;
-  overflow-y: auto;
-  padding-bottom: 100px;
+  padding-bottom: 40px;
 }
 
 .create-post-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding-bottom: 80px;
+  padding-bottom: 24px;
 }
 
 .create-post-page-header {
@@ -639,7 +637,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding-bottom: 80px;
+  padding-bottom: 24px;
 }
 
 .create-post-header {
@@ -815,8 +813,8 @@
 }
 
 .crop-frame-portrait {
-  aspect-ratio: 4 / 5;
-  height: min(55vh, 400px);
+  aspect-ratio: 4 / 3;
+  height: min(50vh, 360px);
   max-width: 85vw;
   top: 50%;
   left: 50%;
@@ -1112,7 +1110,7 @@
 
 .create-post-slide img {
   width: 100%;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
   display: block;
 }
@@ -1138,6 +1136,7 @@
 
 .create-post-preview img {
   width: 100%;
+  aspect-ratio: 4 / 3;
   max-height: 350px;
   object-fit: cover;
   display: block;
@@ -1217,27 +1216,29 @@
 .create-post-submit {
   width: 100%;
   justify-content: center;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  padding: 16px 24px;
+  padding: 14px 24px;
   font-size: 15px;
   font-weight: 700;
-  border-radius: 0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
 }
 
-/* On mobile, account for the mobile bar (64px) */
-@media (max-width: 768px) {
-  .create-post-submit {
-    bottom: 64px;
-  }
-  .create-post-page {
-    padding-bottom: 140px;
-  }
+.create-post-submit:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.create-post-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.create-post-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ── Crop button on image slide ── */
