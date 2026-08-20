@@ -7,7 +7,7 @@ import {
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
-import { Heart, UserPlus, MessageCircle, Bell } from "lucide-react";
+import { Heart, UserPlus, MessageCircle, Bell, Bookmark } from "lucide-react";
 import { NotifSkeleton } from "../components/LoadingSkeleton";
 
 function timeAgo(ts) {
@@ -60,7 +60,49 @@ export default function Notifications() {
         } catch {}
       }
 
-      // Also check posts from people we follow
+      // ── Likes on YOUR posts ──
+      try {
+        const myPostsQ = query(
+          collection(db, "posts"),
+          where("authorId", "==", user.uid),
+          orderBy("createdAt", "desc"),
+          limit(10)
+        );
+        const myPostsSnap = await getDocs(myPostsQ);
+        for (const pDoc of myPostsSnap.docs) {
+          const postData = pDoc.data();
+          // Get likes on this post
+          const likesQ = query(
+            collection(db, "postLikes"),
+            where("postId", "==", pDoc.id),
+            orderBy("createdAt", "desc"),
+            limit(5)
+          );
+          const likesSnap = await getDocs(likesQ);
+          for (const likeDoc of likesSnap.docs) {
+            const likeData = likeDoc.data();
+            if (likeData.userId === user.uid) continue;
+            try {
+              const likerSnap = await getDoc(doc(db, "users", likeData.userId));
+              if (likerSnap.exists()) {
+                const u = likerSnap.data();
+                notifs.push({
+                  id: likeDoc.id,
+                  type: "like",
+                  userId: likeData.userId,
+                  username: u.username,
+                  profilePic: u.profilePic,
+                  createdAt: likeData.createdAt,
+                  text: "liked your post",
+                  postId: pDoc.id,
+                });
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+
+      // Also check posts from people we follow (for general activity)
       const followingQ = query(
         collection(db, "follows"),
         where("followerId", "==", user.uid),
@@ -86,13 +128,13 @@ export default function Notifications() {
               if (authorSnap.exists()) {
                 const a = authorSnap.data();
                 notifs.push({
-                  id: "like_" + p.id,
-                  type: "like",
+                  id: "newpost_" + p.id,
+                  type: "new_post",
                   userId: pData.authorId,
                   username: a.username,
                   profilePic: a.profilePic,
                   createdAt: pData.createdAt,
-                  text: "liked a post",
+                  text: "shared a new post",
                   postId: p.id,
                 });
               }
@@ -138,7 +180,7 @@ export default function Notifications() {
           {notifications.map((n) => (
             <Link
               key={n.id}
-              to={n.type === "like" ? "/home" : "/profile/" + n.userId}
+              to={n.type === "like" ? "/post/" + n.postId : n.type === "new_post" ? "/post/" + n.postId : "/profile/" + n.userId}
               className="notification-item"
             >
               {n.profilePic ? (
@@ -156,7 +198,8 @@ export default function Notifications() {
               </div>
               <div className="notification-icon">
                 {n.type === "follow" && <UserPlus size={16} />}
-                {n.type === "like" && <Heart size={16} fill="var(--error)" color="var(--error)" />}
+                {n.type === "like" && <Heart size={16} fill="var(--accent-bright)" color="var(--accent-bright)" />}
+                {n.type === "new_post" && <Bookmark size={16} color="var(--accent-bright)" />}
                 {n.type === "comment" && <MessageCircle size={16} />}
               </div>
             </Link>

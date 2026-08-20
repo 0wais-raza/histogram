@@ -17,8 +17,9 @@ import {
   ExternalLink, Trash2, Pencil, MoreHorizontal,
   Heart, Bookmark, MessageCircle, Send, X, Check,
   ChevronLeft, ChevronRight, UserPlus, UserMinus, Music, Volume2, VolumeX,
+  Link2, Copy,
 } from "lucide-react";
-import { alertConfirm, alertError, alertPrompt } from "../utils/alerts";
+import { alertConfirm, alertError, alertPrompt, alertSuccess } from "../utils/alerts";
 
 // Music file lookup from manifest
 let musicMap = {};
@@ -585,6 +586,37 @@ export default function Home() {
                 <span className="setup-btn-spinner" />
               </div>
             ) : (
+              <>
+              {/* Copy Link option */}
+              <div className="share-sheet-actions">
+                <button className="share-sheet-action-item" onClick={() => {
+                  const url = `${window.location.origin}/post/${sharePost.id}`;
+                  navigator.clipboard.writeText(url).then(() => {
+                    alertSuccess("Copied!", "Link copied to clipboard.");
+                    setSharePost(null);
+                    setShareContacts([]);
+                  }).catch(() => {});
+                }}>
+                  <div className="share-sheet-action-icon"><Copy size={20} /></div>
+                  <span>Copy link</span>
+                </button>
+                <button className="share-sheet-action-item" onClick={() => {
+                  const url = `${window.location.origin}/post/${sharePost.id}`;
+                  if (navigator.share) {
+                    navigator.share({ title: "Check out this post", url }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(url).then(() => {
+                      alertSuccess("Copied!", "Link copied to clipboard.");
+                    }).catch(() => {});
+                  }
+                  setSharePost(null);
+                  setShareContacts([]);
+                }}>
+                  <div className="share-sheet-action-icon"><Link2 size={20} /></div>
+                  <span>Share link</span>
+                </button>
+              </div>
+              <div className="share-sheet-divider" />
               <div className="share-sheet-list">
                 {shareContacts.length === 0 ? (
                   <p className="share-sheet-empty">No contacts. Follow people to share posts!</p>
@@ -604,6 +636,7 @@ export default function Home() {
                   </button>
                 ))}
               </div>
+              </>
             )}
           </div>
         </div>

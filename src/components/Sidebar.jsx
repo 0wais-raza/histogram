@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { alertConfirm, alertSuccess } from "../utils/alerts";
-import { doc, getDoc, onSnapshot, query, collection, where } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, query, collection, where, orderBy } from "firebase/firestore";
 import { db } from "../firebase/config";
 import {
   Home,
@@ -28,6 +28,7 @@ export default function Sidebar() {
   const [profilePic, setProfilePic] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
+  const [msgUnreadCount, setMsgUnreadCount] = useState(0);
   const moreRef = useRef(null);
 
   const isLanding = location.pathname === "/";
@@ -64,6 +65,21 @@ export default function Sidebar() {
         }
       });
       setNotifCount((prev) => prev + count);
+    }, () => {});
+    return unsub;
+  }, [user]);
+
+  // Realtime unread messages badge
+  useEffect(() => {
+    if (!user) return;
+    const threadsRef = collection(db, "users", user.uid, "chatThreads");
+    const threadsQ = query(threadsRef, orderBy("lastMessageAt", "desc"));
+    const unsub = onSnapshot(threadsQ, (snap) => {
+      let total = 0;
+      snap.docs.forEach((d) => {
+        total += d.data().unreadCount || 0;
+      });
+      setMsgUnreadCount(total);
     }, () => {});
     return unsub;
   }, [user]);
@@ -110,7 +126,7 @@ export default function Sidebar() {
     { icon: Home, label: "Home", path: "/home" },
     { icon: Compass, label: "Explore", path: "/explore" },
     { icon: PlusSquare, label: "Create", path: "/create" },
-    { icon: MessageCircle, label: "Messages", path: "/messages" },
+    { icon: MessageCircle, label: "Messages", path: "/messages", badge: msgUnreadCount },
     { icon: Bell, label: "Notifications", path: "/notifications", badge: notifCount },
     { icon: Bookmark, label: "Saved", path: "/saved" },
     { icon: Music, label: "Music", path: "/music" },
@@ -224,6 +240,11 @@ export default function Sidebar() {
         </Link>
         <Link to="/notifications" className={`mobile-bar-item ${isActive("/notifications") ? "active" : ""}`}>
           <Heart size={24} fill={isActive("/notifications") ? "currentColor" : "none"} />
+          {notifCount > 0 && <span className="mobile-notif-badge">{notifCount > 9 ? "9+" : notifCount}</span>}
+        </Link>
+        <Link to="/messages" className={`mobile-bar-item ${isActive("/messages") ? "active" : ""}`}>
+          <MessageCircle size={24} fill={isActive("/messages") ? "currentColor" : "none"} />
+          {msgUnreadCount > 0 && <span className="mobile-notif-badge">{msgUnreadCount > 9 ? "9+" : msgUnreadCount}</span>}
         </Link>
         <Link
           to={`/profile/${user.uid}`}

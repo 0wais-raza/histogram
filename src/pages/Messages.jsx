@@ -483,8 +483,7 @@ export default function Messages() {
   // ── Chat View ──
   if (activeChat) {
     return (
-      <div className="chat-view">
-        <div className="chat-header">
+      <div className="chat-view">          <div className="chat-header">
           <button className="btn icon-only" onClick={() => setActiveChat(null)}>
             <ArrowLeft size={20} />
           </button>
@@ -498,8 +497,12 @@ export default function Messages() {
             )}
             <div>
               <span className="chat-header-name">@{activeChat.username}</span>
-              {isTyping[activeChat.uid] && (
-                <span className="chat-typing-indicator">typing...</span>
+              {isTyping[activeChat.uid] ? (
+                <span className="chat-typing-indicator">
+                  <span className="typing-dots"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></span>
+                </span>
+              ) : (
+                <span className="chat-header-status">Active now</span>
               )}
             </div>
           </Link>
@@ -550,7 +553,7 @@ export default function Messages() {
                     <>
                       {msg.createdAt?.seconds ? timeAgo(msg.createdAt) : ""}
                       {isMine && (
-                        <span className="chat-read-indicator">
+                        <span className={`chat-read-indicator ${msg.read ? "chat-read" : ""}`}>
                           {msg.read ? <CheckCheck size={14} /> : <Check size={14} />}
                         </span>
                       )}
@@ -560,6 +563,12 @@ export default function Messages() {
               </div>
             );
           })}
+          {/* Typing indicator bubble */}
+          {isTyping[activeChat.uid] && (
+            <div className="chat-bubble chat-bubble-theirs chat-typing-bubble">
+              <div className="typing-dots"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></div>
+            </div>
+          )}
           <div ref={chatEndRef} />
         </div>
 

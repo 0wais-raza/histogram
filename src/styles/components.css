@@ -909,13 +909,26 @@ body.modal-open {
   width: 100%;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.2s;
+  transition: background 0.15s, border-color 0.2s, transform 0.15s;
   text-decoration: none;
   color: inherit;
+  animation: fadeInUp 0.25s ease-out both;
+}
+
+.notification-item:nth-child(1) { animation-delay: 0s; }
+.notification-item:nth-child(2) { animation-delay: 0.03s; }
+.notification-item:nth-child(3) { animation-delay: 0.06s; }
+.notification-item:nth-child(4) { animation-delay: 0.09s; }
+.notification-item:nth-child(5) { animation-delay: 0.12s; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .notification-item:hover {
   background: rgba(134, 59, 255, 0.06);
+  transform: translateY(-1px);
 }
 
 .notification-avatar {
