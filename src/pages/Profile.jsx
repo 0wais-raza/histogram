@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   doc, query, collection, where, orderBy,
@@ -15,6 +15,13 @@ import {
 } from "lucide-react";
 import { ProfileSkeleton } from "../components/LoadingSkeleton";
 import { alertConfirm, alertError } from "../utils/alerts";
+
+// Music file lookup from manifest
+let musicMap = {};
+fetch("/music/manifest.json")
+  .then((r) => r.json())
+  .then((data) => { data.forEach((m) => { musicMap[m.id] = `/music/${m.file}`; }); })
+  .catch(() => {});
 
 export default function Profile() {
   const { uid } = useParams();
@@ -34,6 +41,7 @@ export default function Profile() {
   const [likeCounts, setLikeCounts] = useState({});
   const [savedPosts, setSavedPosts] = useState({});
   const [mutedPosts, setMutedPosts] = useState({});
+  const audioRef = useRef(null);
 
   // ── Realtime profile ──
   useEffect(() => {
@@ -101,6 +109,43 @@ export default function Profile() {
     return () => { unsubLike(); unsubSave(); };
   }, [selectedPost?.id, user]);
 
+  // ── Audio for selected post ──
+  useEffect(() => {
+    if (!selectedPost?.musicId || !musicMap[selectedPost.musicId]) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      return;
+    }
+
+    const audio = new Audio(musicMap[selectedPost.musicId]);
+    audio.loop = true;
+    audio.muted = !!mutedPosts[selectedPost.id];
+    audio.preload = "metadata";
+    audioRef.current = audio;
+
+    if (!mutedPosts[selectedPost.id]) {
+      audio.play().catch(() => {});
+    }
+
+    return () => {
+      audio.pause();
+      audio.src = "";
+      audioRef.current = null;
+    };
+  }, [selectedPost?.id, selectedPost?.musicId, mutedPosts[selectedPost?.id]]);
+
+  // ── Lock body scroll when modal open ──
+  useEffect(() => {
+    if (selectedPost) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [selectedPost]);
+
   async function handleFollow() {
     setFollowLoading(true);
     try { await followUser(uid); }
@@ -143,6 +188,17 @@ export default function Profile() {
     } catch {}
   }
 
+  function toggleMute(postId) {
+    setMutedPosts((prev) => {
+      const newMuted = !prev[postId];
+      if (audioRef.current && selectedPost?.id === postId) {
+        audioRef.current.muted = newMuted;
+        if (!newMuted) audioRef.current.play().catch(() => {});
+      }
+      return { ...prev, [postId]: newMuted };
+    });
+  }
+
   usePageAnimations("profile");
 
   if (loading) return <div className="page"><ProfileSkeleton /></div>;
@@ -160,7 +216,7 @@ export default function Profile() {
           <p className="bio">{profile.bio || "No bio yet."}</p>
           <div className="stats">
             <div className="stat-item"><span className="stat-value">{posts.length}</span><span className="stat-label">Posts</span></div>
-            <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{realFollowerCount ?? profile.followersCount ?? 0}</span><span className="stat-label">Followers</span></Link>
+            <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{realFollowerCount ?? profile.followersCount ?? 0}</span><span className="stat-label">Followers</span></div>
             <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{realFollowingCount ?? profile.followingCount ?? 0}</span><span className="stat-label">Following</span></Link>
           </div>
           <div className="profile-actions">
@@ -198,11 +254,11 @@ export default function Profile() {
         ))}
       </div>
 
-      {/* Post Detail Modal */}
+      {/* Post Detail Modal — Instagram-style */}
       {selectedPost && (
         <div className="modal-backdrop" onClick={() => setSelectedPost(null)}>
           <div className="modal post-detail-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="create-post-header">
+            <div className="create-post-header" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {authorPic ? (
                   <img src={authorPic} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
@@ -226,26 +282,26 @@ export default function Profile() {
               ) : null}
 
               {selectedPost.caption && (
-                <p className="feed-post-caption" style={{ padding: "12px 0" }}>{selectedPost.caption}</p>
+                <p className="feed-post-caption" style={{ padding: "12px 16px" }}>{selectedPost.caption}</p>
               )}
 
               {selectedPost.musicName && (
-                <div className="feed-post-music" style={{ margin: "0 -32px", padding: "10px 32px" }}>
+                <div className="feed-post-music" style={{ margin: "0 16px", padding: "10px 0" }}>
                   <div className="feed-post-music-icon"><Music size={14} /></div>
                   <div className="feed-post-music-info">
                     <span className="feed-post-music-name">{selectedPost.musicName}</span>
                     {selectedPost.musicArtist && <span className="feed-post-music-artist">{selectedPost.musicArtist}</span>}
                   </div>
                   <button
-                    className={`feed-post-music-toggle ${mutedPosts[selectedPost.id] ? "" : "active"}`}
-                    onClick={() => setMutedPosts((prev) => ({ ...prev, [selectedPost.id]: !prev[selectedPost.id] }))}
+                    className={`feed-post-music-toggle ${!mutedPosts[selectedPost.id] ? "active" : ""}`}
+                    onClick={() => toggleMute(selectedPost.id)}
                   >
                     {mutedPosts[selectedPost.id] ? <VolumeX size={14} /> : <Volume2 size={14} />}
                   </button>
                 </div>
               )}
 
-              <div className="feed-post-actions" style={{ borderTop: "1px solid var(--border)", padding: "8px 0" }}>
+              <div className="feed-post-actions" style={{ borderTop: "1px solid var(--border)", padding: "8px 16px" }}>
                 <button className={`feed-post-action-btn ${likedPosts[selectedPost.id] ? "liked" : ""}`} onClick={() => handleLikePost(selectedPost)}>
                   <Heart size={20} fill={likedPosts[selectedPost.id] ? "var(--error)" : "none"} />
                   {(likeCounts[selectedPost.id] ?? selectedPost.likesCount ?? 0) > 0 && <span>{likeCounts[selectedPost.id] ?? selectedPost.likesCount}</span>}
@@ -258,9 +314,11 @@ export default function Profile() {
                   <Bookmark size={20} fill={savedPosts[selectedPost.id] ? "var(--cyan)" : "none"} />
                 </button>
               </div>
-            </div>
 
-            <InlineComments post={selectedPost} />
+              <div style={{ padding: "0 16px 16px" }}>
+                <InlineComments post={selectedPost} />
+              </div>
+            </div>
           </div>
         </div>
       )}

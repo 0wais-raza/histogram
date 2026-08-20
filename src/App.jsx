@@ -16,8 +16,8 @@ import Discover from "./pages/Discover";
 import Music from "./pages/Music";
 import Notifications from "./pages/Notifications";
 import Messages from "./pages/Messages";
-import SearchPage from "./pages/SearchPage";
 import CreatePostPage from "./pages/CreatePostPage";
+import SettingsPage from "./pages/SettingsPage";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 
@@ -43,7 +43,7 @@ function AppRoutes() {
               <Route path="/music" element={<Music />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/messages" element={<Messages />} />
-              <Route path="/search" element={<SearchPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="/profile/:uid" element={<Profile />} />
               <Route path="/profile/:uid/followers" element={<Followers />} />
               <Route path="/saved" element={<Saved />} />

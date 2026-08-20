@@ -1,21 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  doc,
-  updateDoc,
-  increment,
-  deleteDoc,
-  serverTimestamp,
-  getDoc,
+  collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc,
+  increment, deleteDoc, serverTimestamp, getDoc, setDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { alertError } from "../utils/alerts";
-import { Send, Trash2 } from "lucide-react";
+import { Send, Trash2, Heart, Image } from "lucide-react";
 
 export default function InlineComments({ post }) {
   const { user } = useAuth();
@@ -23,6 +14,9 @@ export default function InlineComments({ post }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [authorPics, setAuthorPics] = useState({});
+  const [likedComments, setLikedComments] = useState({});
+  const [commentLikeCounts, setCommentLikeCounts] = useState({});
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const textRef = useRef(text);
@@ -39,7 +33,12 @@ export default function InlineComments({ post }) {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setComments(list);
 
-      // Batch-fetch author pics (only for new UIDs)
+      // Track like counts from comments
+      const counts = {};
+      list.forEach((c) => { counts[c.id] = c.likesCount || 0; });
+      setCommentLikeCounts((prev) => ({ ...prev, ...counts }));
+
+      // Batch-fetch author pics
       const uids = [...new Set(list.map((c) => c.authorId).filter(Boolean))];
       uids.forEach(async (uid) => {
         if (fetchedPicsRef.current.has(uid)) return;
@@ -62,6 +61,18 @@ export default function InlineComments({ post }) {
     return unsub;
   }, [post.id]);
 
+  // Subscribe to comment likes
+  useEffect(() => {
+    if (!comments.length || !user) return;
+    const unsubs = comments.map((c) => {
+      const likeId = `${user.uid}_${c.id}`;
+      return onSnapshot(doc(db, "commentLikes", likeId), (snap) => {
+        setLikedComments((prev) => ({ ...prev, [c.id]: snap.exists() }));
+      }, () => {});
+    });
+    return () => unsubs.forEach((u) => u());
+  }, [comments.map((c) => c.id).join(","), user]);
+
   useEffect(() => {
     if (comments.length > 0) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -73,7 +84,6 @@ export default function InlineComments({ post }) {
     const trimmed = textRef.current.trim();
     if (!trimmed || sending) return;
 
-    // Clear input immediately for instant feedback
     setText("");
     setSending(true);
 
@@ -83,13 +93,12 @@ export default function InlineComments({ post }) {
         authorName: user.displayName || user.email,
         text: trimmed,
         createdAt: serverTimestamp(),
+        likesCount: 0,
       });
-      // Increment count separately — don't let count failure break the comment
       updateDoc(doc(db, "posts", post.id), {
         commentsCount: increment(1),
       }).catch(() => {});
     } catch (err) {
-      // Restore text on error
       setText(trimmed);
       alertError(
         "Failed to comment",
@@ -101,6 +110,50 @@ export default function InlineComments({ post }) {
     }
   }
 
+  async function handleSendGif(gifUrl) {
+    setSending(true);
+    setShowGifPicker(false);
+
+    try {
+      await addDoc(collection(db, "posts", post.id, "comments"), {
+        authorId: user.uid,
+        authorName: user.displayName || user.email,
+        text: "",
+        isGif: true,
+        gifUrl,
+        createdAt: serverTimestamp(),
+        likesCount: 0,
+      });
+      updateDoc(doc(db, "posts", post.id), {
+        commentsCount: increment(1),
+      }).catch(() => {});
+    } catch (err) {
+      alertError("Failed to comment", err.message.replace("Firebase: ", "") || "Something went wrong.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleLikeComment(comment) {
+    const isLiked = likedComments[comment.id];
+    const likeId = `${user.uid}_${comment.id}`;
+
+    setCommentLikeCounts((prev) => ({
+      ...prev,
+      [comment.id]: isLiked ? Math.max(0, (prev[comment.id] || 1) - 1) : (prev[comment.id] || 0) + 1,
+    }));
+
+    try {
+      if (isLiked) {
+        deleteDoc(doc(db, "commentLikes", likeId));
+        updateDoc(doc(db, "posts", post.id, "comments", comment.id), { likesCount: increment(-1) }).catch(() => {});
+      } else {
+        setDoc(doc(db, "commentLikes", likeId), { commentId: comment.id, userId: user.uid, createdAt: serverTimestamp() });
+        updateDoc(doc(db, "posts", post.id, "comments", comment.id), { likesCount: increment(1) }).catch(() => {});
+      }
+    } catch {}
+  }
+
   async function handleDeleteComment(comment) {
     try {
       await deleteDoc(doc(db, "posts", post.id, "comments", comment.id));
@@ -109,6 +162,15 @@ export default function InlineComments({ post }) {
       });
     } catch {}
   }
+
+  const commentGifs = [
+    { url: "https://media.tenor.com/iMlPK0MXgqYAAAAM/wave-hello.gif", label: "Wave" },
+    { url: "https://media.tenor.com/1NixIQ8tzCsAAAAM/thumbs-up-thumbsup.gif", label: "Like" },
+    { url: "https://media.tenor.com/JJmHyMpMFJsAAAAM/love-you-heart.gif", label: "Love" },
+    { url: "https://media.tenor.com/Z1JgEOBMkjEAAAAM/fire-fire-emoji.gif", label: "Fire" },
+    { url: "https://media.tenor.com/TKktnMmkz5YAAAAM/laughing-lol.gif", label: "LOL" },
+    { url: "https://media.tenor.com/FfI0cMNYXr4AAAAM/clapping-clap.gif", label: "Clap" },
+  ];
 
   return (
     <div className="inline-comments">
@@ -125,7 +187,22 @@ export default function InlineComments({ post }) {
               )}
               <div className="comment-body">
                 <span className="comment-author">{c.authorName}</span>
-                <p className="comment-text">{c.text}</p>
+                {c.isGif && c.gifUrl ? (
+                  <img src={c.gifUrl} alt="GIF" className="comment-gif" />
+                ) : c.text ? (
+                  <p className="comment-text">{c.text}</p>
+                ) : null}
+                <div className="comment-actions">
+                  <button
+                    className={`comment-like-btn ${likedComments[c.id] ? "liked" : ""}`}
+                    onClick={() => handleLikeComment(c)}
+                  >
+                    <Heart size={12} fill={likedComments[c.id] ? "var(--error)" : "none"} />
+                    {(commentLikeCounts[c.id] ?? c.likesCount ?? 0) > 0 && (
+                      <span>{commentLikeCounts[c.id] ?? c.likesCount}</span>
+                    )}
+                  </button>
+                </div>
               </div>
               {c.authorId === user?.uid && (
                 <button className="comment-delete" onClick={() => handleDeleteComment(c)}>
@@ -138,7 +215,26 @@ export default function InlineComments({ post }) {
         </div>
       )}
 
+      {/* GIF Picker */}
+      {showGifPicker && (
+        <div className="inline-comments-gif-grid">
+          {commentGifs.map((gif) => (
+            <button key={gif.url} className="inline-gif-item" onClick={() => handleSendGif(gif.url)}>
+              <img src={gif.url} alt={gif.label} />
+            </button>
+          ))}
+        </div>
+      )}
+
       <form className="inline-comments-form" onSubmit={handleSend}>
+        <button
+          type="button"
+          className="comment-gif-btn"
+          onClick={() => setShowGifPicker(!showGifPicker)}
+          title="Add GIF"
+        >
+          <Image size={16} />
+        </button>
         <input
           ref={inputRef}
           type="text"

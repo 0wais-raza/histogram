@@ -19,49 +19,82 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
 const MAX_IMAGES = 5;
 
-// Crop an image File using canvas, returns a new File
-function cropImageFile(file, cropData, aspect) {
+// Crop presets — Instagram-like
+const CROP_PRESETS = [
+  { key: "free", label: "Free", ratio: null },
+  { key: "4:5", label: "4:5", ratio: 4 / 5 },   // Instagram portrait (default)
+  { key: "1:1", label: "1:1", ratio: 1 },         // Instagram square
+  { key: "16:9", label: "16:9", ratio: 16 / 9 },  // Wide/landscape
+];
+
+// Crop an image File using canvas — proper aspect-ratio aware cropping
+function cropImageFile(file, cropData, aspectKey) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
-      let cropW, cropH;
-      const vw = window.innerWidth * 0.9;
-      const vh = window.innerHeight * 0.6;
+      const preset = CROP_PRESETS.find((p) => p.key === aspectKey);
+      const ratio = preset?.ratio;
 
-      if (aspect === "1:1") {
-        const s = Math.min(vw, vh);
-        cropW = cropW = (s / cropData.scale) * (img.naturalWidth / vw);
-        cropH = cropW;
-      } else if (aspect === "4:5") {
-        cropW = (vw / cropData.scale) * (img.naturalWidth / vw);
-        cropH = cropW * (5 / 4);
-      } else if (aspect === "16:9") {
-        cropW = (vw / cropData.scale) * (img.naturalWidth / vw);
-        cropH = cropW * (9 / 16);
+      let cropW, cropH;
+
+      if (!ratio) {
+        // Free crop — use full image
+        cropW = img.naturalWidth;
+        cropH = img.naturalHeight;
       } else {
-        // Free: use the full image
-        cropW = img.naturalWidth / cropData.scale;
-        cropH = img.naturalHeight / cropData.scale;
+        // Calculate crop region from viewport crop frame
+        const vw = window.innerWidth * 0.9;
+        const vh = window.innerHeight * 0.55;
+
+        if (ratio >= 1) {
+          // Landscape or square
+          cropW = vw / cropData.scale;
+          cropH = cropW / ratio;
+          if (cropH > vh / cropData.scale) {
+            cropH = vh / cropData.scale;
+            cropW = cropH * ratio;
+          }
+        } else {
+          // Portrait
+          cropH = vh / cropData.scale;
+          cropW = cropH * ratio;
+          if (cropW > vw / cropData.scale) {
+            cropW = vw / cropData.scale;
+            cropH = cropW / ratio;
+          }
+        }
+
+        // Map viewport crop to natural image coordinates
+        cropW = (cropW / vw) * img.naturalWidth;
+        cropH = (cropH / vh) * img.naturalHeight;
       }
 
-      // Clamp to image bounds
+      // Clamp
       cropW = Math.min(cropW, img.naturalWidth);
       cropH = Math.min(cropH, img.naturalHeight);
 
-      // Calculate source crop region (centered with offset)
-      const sx = Math.max(0, (img.naturalWidth - cropW) / 2 - (cropData.x / cropData.scale) * (img.naturalWidth / vw));
-      const sy = Math.max(0, (img.naturalHeight - cropH) / 2 - (cropData.y / cropData.scale) * (img.naturalHeight / vh));
+      // Source position — center with offset from drag
+      const offsetX = (cropData.x / (cropData.scale || 1)) * (img.naturalWidth / (window.innerWidth * 0.9));
+      const offsetY = (cropData.y / (cropData.scale || 1)) * (img.naturalHeight / (window.innerHeight * 0.55));
 
-      canvas.width = cropW;
-      canvas.height = cropH;
-      ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, cropW, cropH);
+      let sx = Math.max(0, (img.naturalWidth - cropW) / 2 - offsetX);
+      let sy = Math.max(0, (img.naturalHeight - cropH) / 2 - offsetY);
+
+      // Clamp source to image bounds
+      sx = Math.max(0, Math.min(sx, img.naturalWidth - cropW));
+      sy = Math.max(0, Math.min(sy, img.naturalHeight - cropH));
+
+      // Use natural crop dimensions for output
+      canvas.width = Math.round(cropW);
+      canvas.height = Math.round(cropH);
+      ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
 
       canvas.toBlob((blob) => {
         if (blob) {
-          resolve(new File([blob], file.name, { type: "image/jpeg", lastModified: Date.now() }));
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg", lastModified: Date.now() }));
         } else {
           resolve(file);
         }
@@ -87,11 +120,11 @@ export default function CreatePost() {
   const [musicSearch, setMusicSearch] = useState("");
   const [musicTracks, setMusicTracks] = useState([]);
 
-  // Crop state — store per image
+  // Crop state
   const [cropIndex, setCropIndex] = useState(null);
   const [cropData, setCropData] = useState({ x: 0, y: 0, scale: 1 });
-  const [cropAspect, setCropAspect] = useState("free");
-  const [cropStates, setCropStates] = useState({}); // { [idx]: { x, y, scale, aspect } }
+  const [cropAspect, setCropAspect] = useState("4:5"); // Default to 4:5 Instagram portrait
+  const [cropStates, setCropStates] = useState({});
   const cropDragRef = useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
 
   // Music trim state
@@ -147,7 +180,6 @@ export default function CreatePost() {
   function removeImage(idx) {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
     setPreviews((prev) => prev.filter((_, i) => i !== idx));
-    // Shift crop states
     setCropStates((prev) => {
       const next = {};
       Object.entries(prev).forEach(([k, v]) => {
@@ -165,7 +197,7 @@ export default function CreatePost() {
     setCropIndex(idx);
     const existing = cropStates[idx];
     setCropData(existing ? { x: existing.x, y: existing.y, scale: existing.scale } : { x: 0, y: 0, scale: 1 });
-    setCropAspect(existing?.aspect || "free");
+    setCropAspect(existing?.aspect || "4:5");
   }
 
   function handleCropMouseDown(e) {
@@ -208,7 +240,6 @@ export default function CreatePost() {
   }, [cropIndex, handleCropMouseMove, handleCropMouseUp]);
 
   function applyCrop() {
-    // Save crop state for this image
     setCropStates((prev) => ({
       ...prev,
       [cropIndex]: { ...cropData, aspect: cropAspect },
@@ -292,7 +323,6 @@ export default function CreatePost() {
       if (files.length > 0) {
         for (let i = 0; i < files.length; i++) {
           setUploadProgress(`Uploading ${i + 1} of ${files.length}...`);
-          // Apply crop if this image was cropped
           let fileToUpload = files[i];
           if (cropStates[i]) {
             fileToUpload = await cropImageFile(files[i], cropStates[i], cropStates[i].aspect);
@@ -370,14 +400,18 @@ export default function CreatePost() {
           </div>
 
           <div className="crop-tools">
-            {["free", "1:1", "4:5", "16:9"].map((a) => (
+            {CROP_PRESETS.map((p) => (
               <button
-                key={a}
+                key={p.key}
                 type="button"
-                className={`crop-aspect-btn ${cropAspect === a ? "active" : ""}`}
-                onClick={() => { setCropAspect(a); setCropData({ x: 0, y: 0, scale: a === "free" ? 1 : a === "16:9" ? 1.3 : 1.15 }); }}
+                className={`crop-aspect-btn ${cropAspect === p.key ? "active" : ""}`}
+                onClick={() => {
+                  setCropAspect(p.key);
+                  const defaultScale = p.key === "free" ? 1 : p.key === "1:1" ? 1.2 : p.key === "4:5" ? 1.15 : 1.3;
+                  setCropData({ x: 0, y: 0, scale: defaultScale });
+                }}
               >
-                {a === "free" ? "Free" : a}
+                {p.label}
               </button>
             ))}
           </div>
@@ -446,7 +480,7 @@ export default function CreatePost() {
               {previews.map((src, idx) => (
                 <div key={idx} className="create-post-slide">
                   <img src={src} alt={`Preview ${idx + 1}`} />
-                  {cropStates[idx] && <div className="create-post-cropped-badge"><Crop size={12} /> Cropped</div>}
+                  {cropStates[idx] && <div className="create-post-cropped-badge"><Crop size={12} /> {cropStates[idx].aspect === "free" ? "Free crop" : cropStates[idx].aspect}</div>}
                   <button type="button" className="create-post-remove" onClick={() => removeImage(idx)}>
                     <X size={16} />
                   </button>

@@ -1,37 +1,31 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import { alertConfirm, alertSuccess } from "../utils/alerts";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, query, collection, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 import {
   Home,
-  Search,
   Compass,
   MessageCircle,
   Heart,
   PlusSquare,
   Bookmark,
   LogOut,
-  Menu,
-  X,
-  Camera,
   MoreHorizontal,
-  Sun,
-  Moon,
   Settings,
   Music,
+  Bell,
 } from "lucide-react";
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const { dark, toggle } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [profilePic, setProfilePic] = useState("");
   const [showMore, setShowMore] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
   const moreRef = useRef(null);
 
   const isLanding = location.pathname === "/";
@@ -52,6 +46,33 @@ export default function Sidebar() {
       }
     });
   }, [user]);
+
+  // Realtime notification badge
+  useEffect(() => {
+    if (!user) return;
+    const followsQ = query(collection(db, "follows"), where("followingId", "==", user.uid));
+    const lastCheck = Number(localStorage.getItem(`notif_last_${user.uid}`) || 0);
+    const unsub = onSnapshot(followsQ, (snap) => {
+      let count = 0;
+      snap.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const data = change.doc.data();
+          const ts = data.createdAt?.seconds ? data.createdAt.seconds * 1000 : 0;
+          if (ts > lastCheck) count++;
+        }
+      });
+      setNotifCount((prev) => prev + count);
+    }, () => {});
+    return unsub;
+  }, [user]);
+
+  // Mark notifications as read when visiting
+  useEffect(() => {
+    if (location.pathname === "/notifications" && user) {
+      localStorage.setItem(`notif_last_${user.uid}`, String(Date.now()));
+      setNotifCount(0);
+    }
+  }, [location.pathname, user]);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -85,11 +106,10 @@ export default function Sidebar() {
 
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
-    { icon: Search, label: "Search", path: "/search" },
     { icon: Compass, label: "Explore", path: "/explore" },
     { icon: PlusSquare, label: "Create", path: "/create" },
     { icon: MessageCircle, label: "Messages", path: "/messages" },
-    { icon: Heart, label: "Notifications", path: "/notifications" },
+    { icon: Bell, label: "Notifications", path: "/notifications", badge: notifCount },
     { icon: Bookmark, label: "Saved", path: "/saved" },
     { icon: Music, label: "Music", path: "/music" },
   ];
@@ -116,7 +136,14 @@ export default function Sidebar() {
                   className={`sidebar-nav-item ${isActive(item.path) ? "active" : ""}`}
                   title={item.label}
                 >
-                  <Icon size={24} fill={isActive(item.path) ? "currentColor" : "none"} />
+                  <div style={{ position: "relative" }}>
+                    <Icon size={24} fill={isActive(item.path) ? "currentColor" : "none"} />
+                    {item.badge > 0 && (
+                      <span className="notif-badge">
+                        {item.badge > 99 ? "99+" : item.badge}
+                      </span>
+                    )}
+                  </div>
                   {!collapsed && <span>{item.label}</span>}
                 </Link>
               );
@@ -154,15 +181,8 @@ export default function Sidebar() {
 
               {showMore && (
                 <div className="sidebar-more-menu">
-                  <button
-                    className="sidebar-more-item"
-                    onClick={() => { toggle(); setShowMore(false); }}
-                  >
-                    {dark ? <Sun size={16} /> : <Moon size={16} />}
-                    {dark ? "Light mode" : "Dark mode"}
-                  </button>
                   <Link
-                    to={`/profile/${user.uid}`}
+                    to="/settings"
                     className="sidebar-more-item"
                     onClick={() => setShowMore(false)}
                   >
