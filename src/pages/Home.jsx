@@ -15,7 +15,7 @@ import { FeedSkeleton } from "../components/LoadingSkeleton";
 import { staticPosts } from "../config/posts";
 import {
   ExternalLink, Trash2, Pencil, MoreHorizontal,
-  Heart, Bookmark, MessageCircle, Share2, Send, X,
+  Heart, Bookmark, MessageCircle, Share2, Send, X, Check,
   ChevronLeft, ChevronRight, UserPlus, UserMinus, Music, Volume2, VolumeX,
 } from "lucide-react";
 import { alertConfirm, alertError, alertPrompt } from "../utils/alerts";
@@ -250,12 +250,15 @@ export default function Home() {
     }
   }
 
+  const [sentTo, setSentTo] = useState(null);
+
   async function sendPostToChat(contact) {
     if (!sharePost || !contact) return;
     const shareText = sharePost.caption
       ? `${sharePost.authorName}: ${sharePost.caption.slice(0, 120)}\n\n${window.location.origin}/home`
       : `${sharePost.authorName} shared a post\n\n${window.location.origin}/home`;
 
+    setSentTo(contact.uid);
     try {
       const chatId = [user.uid, contact.uid].sort().join("_");
       const batch = writeBatch(db);
@@ -273,9 +276,14 @@ export default function Home() {
       await batch.commit();
       await addDoc(collection(db, "chats", chatId, "messages"), { senderId: user.uid, text: shareText, isGif: false, gifUrl: "", createdAt: serverTimestamp(), read: false });
 
-      setSharePost(null);
-      setShareContacts([]);
+      // Show sent confirmation then close
+      setTimeout(() => {
+        setSentTo(null);
+        setSharePost(null);
+        setShareContacts([]);
+      }, 800);
     } catch (err) {
+      setSentTo(null);
       alertError("Failed", "Could not send. Please try again.");
     }
   }
@@ -574,7 +582,7 @@ export default function Home() {
                 {shareContacts.length === 0 ? (
                   <p className="share-sheet-empty">No contacts. Follow people to share posts!</p>
                 ) : shareContacts.map((c) => (
-                  <button key={c.uid} className="share-sheet-item" onClick={() => sendPostToChat(c)}>
+                  <button key={c.uid} className="share-sheet-item" onClick={() => sendPostToChat(c)} disabled={sentTo !== null}>
                     {c.profilePic ? (
                       <img src={c.profilePic} alt="" className="share-sheet-avatar" />
                     ) : (
@@ -583,8 +591,8 @@ export default function Home() {
                       </div>
                     )}
                     <span className="share-sheet-name">@{c.username}</span>
-                    <div className="share-sheet-send">
-                      <Send size={16} />
+                    <div className={`share-sheet-send ${sentTo === c.uid ? "share-sheet-sent" : ""}`}>
+                      {sentTo === c.uid ? <Check size={16} /> : <Send size={16} />}
                     </div>
                   </button>
                 ))}

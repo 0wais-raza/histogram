@@ -69,6 +69,8 @@ export default function Messages() {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [networkOnline, setNetworkOnline] = useState(navigator.onLine);
   const [isTyping, setIsTyping] = useState({});
+  const [pendingIds, setPendingIds] = useState(new Set());
+  const [failedIds, setFailedIds] = useState(new Set());
   const chatEndRef = useRef(null);
   const chatInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -237,6 +239,9 @@ export default function Messages() {
   // Real-time messages when chat is active
   useEffect(() => {
     if (!activeChat || !user) return;
+    setChatMessages([]);
+    setPendingIds(new Set());
+    setFailedIds(new Set());
     const chatId = [user.uid, activeChat.uid].sort().join("_");
     const q = query(
       collection(db, "chats", chatId, "messages"),
@@ -247,6 +252,16 @@ export default function Messages() {
     const unsub = onSnapshot(q, (snap) => {
       const msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setChatMessages(msgs);
+      // Clear pending states for messages that now exist in Firestore
+      setPendingIds((prev) => {
+        if (prev.size === 0) return prev;
+        const next = new Set();
+        for (const pid of prev) {
+          const stillPending = !msgs.some((m) => m.text === pid.split("||")[1] && m.senderId === user.uid);
+          if (stillPending) next.add(pid);
+        }
+        return next;
+      });
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     }, (err) => {
       console.error("Messages listener error:", err);
@@ -332,9 +347,25 @@ export default function Messages() {
       return;
     }
 
-    setSending(true);
+    // Generate a temporary ID for optimistic UI
+    const tempId = "temp_" + Date.now() + "||" + (text || "gif");
+
+    // Optimistic: add message to UI instantly
+    const optimisticMsg = {
+      id: tempId,
+      senderId: user.uid,
+      text: text || "",
+      isGif,
+      gifUrl: isGif ? text : "",
+      createdAt: { seconds: Math.floor(Date.now() / 1000) },
+      read: false,
+      pending: true,
+    };
+    setChatMessages((prev) => [...prev, optimisticMsg]);
+    setPendingIds((prev) => new Set([...prev, tempId]));
     setChatInput("");
     setShowGifs(false);
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
     try {
       const chatId = [user.uid, activeChat.uid].sort().join("_");
@@ -377,12 +408,58 @@ export default function Messages() {
         createdAt: serverTimestamp(),
         read: false,
       });
+
+      // Success — remove from pending (onSnapshot will add the real message)
+      setPendingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(tempId);
+        return next;
+      });
     } catch (err) {
       console.error("Send failed:", err);
-      alertError("Message not sent", friendlyError(err));
+      // Mark as failed
+      setPendingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(tempId);
+        return next;
+      });
+      setFailedIds((prev) => new Set([...prev, tempId]));
+      alertError("Message failed", friendlyError(err));
     } finally {
-      setSending(false);
       chatInputRef.current?.focus();
+    }
+  }
+
+  async function retryMessage(failedTempId, text, isGif) {
+    setFailedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(failedTempId);
+      return next;
+    });
+    setPendingIds((prev) => new Set([...prev, failedTempId]));
+    setChatMessages((prev) =>
+      prev.map((m) => m.id === failedTempId ? { ...m, pending: true } : m)
+    );
+    try {
+      const chatId = [user.uid, activeChat.uid].sort().join("_");
+      const batch = writeBatch(db);
+      const chatRef = doc(db, "chats", chatId);
+      const chatSnap = await getDoc(chatRef);
+      if (!chatSnap.exists()) {
+        batch.set(chatRef, { participants: [user.uid, activeChat.uid], lastMessage: text || "GIF", lastMessageAt: serverTimestamp(), typing: {} });
+        batch.set(doc(db, "users", user.uid, "chatThreads", chatId), { chatId, otherUser: activeChat.uid, lastMessageAt: serverTimestamp(), lastMessage: text || "GIF", unreadCount: 0 });
+        batch.set(doc(db, "users", activeChat.uid, "chatThreads", chatId), { chatId, otherUser: user.uid, lastMessageAt: serverTimestamp(), lastMessage: text || "GIF", unreadCount: 1 });
+      } else {
+        batch.update(chatRef, { lastMessage: text || "GIF", lastMessageAt: serverTimestamp() });
+        batch.set(doc(db, "users", user.uid, "chatThreads", chatId), { lastMessage: text || "GIF", lastMessageAt: serverTimestamp(), unreadCount: 0 }, { merge: true });
+        batch.set(doc(db, "users", activeChat.uid, "chatThreads", chatId), { lastMessage: text || "GIF", lastMessageAt: serverTimestamp(), unreadCount: increment(1) }, { merge: true });
+      }
+      await batch.commit();
+      await addDoc(collection(db, "chats", chatId, "messages"), { senderId: user.uid, text: text || "", isGif, gifUrl: isGif ? text : "", createdAt: serverTimestamp(), read: false });
+      setPendingIds((prev) => { const next = new Set(prev); next.delete(failedTempId); return next; });
+    } catch (err) {
+      setPendingIds((prev) => { const next = new Set(prev); next.delete(failedTempId); return next; });
+      setFailedIds((prev) => new Set([...prev, failedTempId]));
     }
   }
 
@@ -439,19 +516,34 @@ export default function Messages() {
           )}
           {chatMessages.map((msg) => {
             const isMine = msg.senderId === user.uid;
+            const isPending = msg.pending || pendingIds.has(msg.id);
+            const isFailed = failedIds.has(msg.id);
             return (
-              <div key={msg.id} className={`chat-bubble ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"}`}>
+              <div key={msg.id} className={`chat-bubble ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"} ${isPending ? "chat-bubble-pending" : ""} ${isFailed ? "chat-bubble-failed" : ""}`}>
                 {msg.isGif ? (
                   <img src={msg.gifUrl} alt="GIF" className="chat-gif" loading="lazy" />
                 ) : (
                   <p>{msg.text}</p>
                 )}
                 <span className="chat-bubble-time">
-                  {msg.createdAt?.seconds ? timeAgo(msg.createdAt) : ""}
-                  {isMine && (
-                    <span className="chat-read-indicator">
-                      {msg.read ? <CheckCheck size={14} /> : <Check size={14} />}
+                  {isFailed ? (
+                    <span className="chat-fail-indicator">
+                      <span className="chat-fail-text">Failed</span>
+                      <button className="chat-retry-btn" onClick={() => retryMessage(msg.id, msg.text, msg.isGif)} title="Retry">
+                        ↻
+                      </button>
                     </span>
+                  ) : isPending ? (
+                    <span className="chat-pending-dots">sending...</span>
+                  ) : (
+                    <>
+                      {msg.createdAt?.seconds ? timeAgo(msg.createdAt) : ""}
+                      {isMine && (
+                        <span className="chat-read-indicator">
+                          {msg.read ? <CheckCheck size={14} /> : <Check size={14} />}
+                        </span>
+                      )}
+                    </>
                   )}
                 </span>
               </div>
