@@ -8,8 +8,6 @@
   align-items: center;
   padding: 12px 24px;
   background: var(--glass-bg-heavy);
-  backdrop-filter: blur(24px) saturate(1.8);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
   border-bottom: 1px solid var(--glass-border);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 24px rgba(0, 0, 0, 0.2);
   position: sticky;
@@ -19,8 +17,6 @@
 
 .navbar-landing {
   background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   border-bottom: 1px solid rgba(134, 59, 255, 0.06);
   box-shadow: none;
 }
@@ -132,8 +128,6 @@
   right: 0;
   width: 240px;
   background: var(--glass-bg-heavy);
-  backdrop-filter: blur(24px) saturate(1.8);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -259,8 +253,6 @@
 
 .auth-card {
   background: var(--glass-bg-heavy);
-  backdrop-filter: blur(24px) saturate(1.8);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   padding: 40px 36px;
@@ -391,8 +383,6 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   color: var(--text);
   font-weight: 600;
   font-size: 14px;
@@ -620,15 +610,14 @@
   position: fixed;
   inset: 0;
   background: rgba(5, 5, 15, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   padding: 16px;
   animation: modalBackdropIn 0.25s var(--ease-out) forwards;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Prevent background scroll when any modal is open */
@@ -650,8 +639,6 @@ body.modal-open {
 
 .modal {
   background: var(--glass-bg-heavy);
-  backdrop-filter: blur(32px) saturate(2);
-  -webkit-backdrop-filter: blur(32px) saturate(2);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   padding: 32px;
@@ -754,6 +741,8 @@ body.modal-open {
   max-width: 460px;
   max-height: 90vh;
   overflow-y: auto;
+  margin: auto;
+  flex-shrink: 0;
 }
 
 .setup-profile-header {
@@ -838,8 +827,6 @@ body.modal-open {
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   color: var(--text);
   font-weight: 600;
   font-size: 14px;
@@ -917,12 +904,12 @@ body.modal-open {
   gap: 12px;
   padding: 12px 16px;
   border-radius: var(--radius-md);
-  background: none;
-  border: none;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   width: 100%;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.2s;
   text-decoration: none;
   color: inherit;
 }

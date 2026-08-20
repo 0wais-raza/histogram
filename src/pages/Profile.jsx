@@ -13,6 +13,7 @@ import FormattedText from "../components/FormattedText";
 import {
   ImageIcon, Trash2, UserPlus, UserMinus, Heart,
   MessageCircle, Bookmark, X, Music, Volume2, VolumeX,
+  Send,
 } from "lucide-react";
 import { ProfileSkeleton } from "../components/LoadingSkeleton";
 import { alertConfirm, alertError } from "../utils/alerts";
@@ -224,9 +225,14 @@ export default function Profile() {
             {isOwner ? (
               <button className="btn" onClick={() => setEditing(true)}>Edit profile</button>
             ) : user && (
-              <button className={`btn ${following ? "ghost" : "primary"}`} onClick={handleFollow} disabled={followLoading}>
-                {following ? <><UserMinus size={16} /> Unfollow</> : <><UserPlus size={16} /> Follow</>}
-              </button>
+              <>
+                <button className={`btn ${following ? "ghost" : "primary"}`} onClick={handleFollow} disabled={followLoading}>
+                  {following ? <><UserMinus size={16} /> Unfollow</> : <><UserPlus size={16} /> Follow</>}
+                </button>
+                <Link to="/messages" state={{ startChat: { uid, username: profile.username, profilePic: profile.profilePic } }} className="btn ghost">
+                  <Send size={16} /> Message
+                </Link>
+              </>
             )}
           </div>
         </div>

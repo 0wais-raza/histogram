@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
-  collection, query, limit, getDocs, doc, getDoc, getDocs as getDocs2,
+  collection, query, limit, getDocs, doc, getDoc,
   addDoc, orderBy, onSnapshot, serverTimestamp, writeBatch, updateDoc,
-  where, increment, arrayUnion, arrayRemove, Timestamp,
+  where, increment,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -42,7 +42,6 @@ function timeAgo(ts) {
   return Math.floor(hrs / 24) + "d";
 }
 
-// Friendlier error messages
 function friendlyError(err) {
   const msg = err?.message || String(err);
   if (msg.includes("network") || msg.includes("offline") || msg.includes("Failed to fetch"))
@@ -56,6 +55,8 @@ function friendlyError(err) {
 
 export default function Messages() {
   const { user } = useAuth();
+  const location = useLocation();
+  const startChatData = location.state?.startChat;
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -84,42 +85,60 @@ export default function Messages() {
     };
   }, []);
 
-  // Load conversations in REALTIME via chatThreads subcollection
+  // Auto-start chat when navigated from Profile's Message button
+  useEffect(() => {
+    if (startChatData?.uid && startChatData?.username) {
+      setActiveChat({
+        uid: startChatData.uid,
+        username: startChatData.username,
+        profilePic: startChatData.profilePic || "",
+      });
+      // Clear the state so it doesn't re-trigger
+      window.history.replaceState({}, document.title);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load conversations: show ALL followed users (not just mutuals)
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
 
-    // First, also get mutual follows so we can show them
-    async function loadMutualsAndSubscribe() {
+    async function loadAndSubscribe() {
       setLoading(true);
       try {
-        // Get mutual follows
+        // Get all users this user follows
         const followingSnap = await getDocs(
-          query(collection(db, "follows"), where("followerId", "==", user.uid), limit(50))
+          query(collection(db, "follows"), where("followerId", "==", user.uid), limit(100))
         );
+        const followingUids = followingSnap.docs.map((d) => d.data().followingId);
+
+        // Also get users who follow this user (for completeness)
         const followersSnap = await getDocs(
-          query(collection(db, "follows"), where("followingId", "==", user.uid), limit(50))
+          query(collection(db, "follows"), where("followingId", "==", user.uid), limit(100))
         );
+        const followerUids = followersSnap.docs.map((d) => d.data().followerId);
 
-        const followingUids = new Set(followingSnap.docs.map((d) => d.data().followingId));
-        const followerUids = new Set(followersSnap.docs.map((d) => d.data().followerId));
-        const mutualUids = [...followingUids].filter((uid) => followerUids.has(uid));
+        // Combine: all followed users + followers (for messaging)
+        const allUids = [...new Set([...followingUids, ...followerUids])];
 
-        // Fetch user data for mutuals
+        // Fetch user data for all contacts
         const userDataMap = {};
-        for (const uid of mutualUids.slice(0, 30)) {
+        for (const uid of allUids.slice(0, 50)) {
+          if (uid === user.uid) continue;
           try {
             const s = await getDoc(doc(db, "users", uid));
             if (s.exists()) {
               const d = s.data();
-              userDataMap[uid] = { uid, username: d.username, profilePic: d.profilePic, bio: d.bio };
+              if (d.username) {
+                userDataMap[uid] = { uid, username: d.username, profilePic: d.profilePic, bio: d.bio };
+              }
             }
           } catch {}
         }
 
         if (cancelled) return;
 
-        // Now subscribe to user's chat threads in realtime
+        // Subscribe to user's chat threads in realtime
         const threadsRef = collection(db, "users", user.uid, "chatThreads");
         const threadsQ = query(threadsRef, orderBy("lastMessageAt", "desc"));
 
@@ -137,14 +156,16 @@ export default function Messages() {
             const lastMsgAt = threadData.lastMessageAt;
             const unreadCount = threadData.unreadCount || 0;
 
-            // Get user data from cache or our loaded mutuals
+            // Get user data from cache or our loaded contacts
             let userData = userDataMap[otherUid];
             if (!userData) {
               try {
                 const s = await getDoc(doc(db, "users", otherUid));
                 if (s.exists()) {
                   const d = s.data();
-                  userData = { uid: otherUid, username: d.username, profilePic: d.profilePic, bio: d.bio };
+                  if (d.username) {
+                    userData = { uid: otherUid, username: d.username, profilePic: d.profilePic, bio: d.bio };
+                  }
                 }
               } catch {}
             }
@@ -163,7 +184,7 @@ export default function Messages() {
             }
           }
 
-          // Also add mutuals who don't have threads yet
+          // Also add followed users who don't have threads yet (so they can start chatting)
           for (const [uid, data] of Object.entries(userDataMap)) {
             if (!threadConvo.find((c) => c.uid === uid)) {
               threadConvo.push({
@@ -191,7 +212,7 @@ export default function Messages() {
       }
     }
 
-    let unsubPromise = loadMutualsAndSubscribe();
+    let unsubPromise = loadAndSubscribe();
     return () => {
       cancelled = true;
       unsubPromise.then((unsub) => unsub?.());
@@ -240,7 +261,6 @@ export default function Messages() {
     const chatId = [user.uid, activeChat.uid].sort().join("_");
     const threadRef = doc(db, "users", user.uid, "chatThreads", chatId);
 
-    // Reset unread count
     getDoc(threadRef).then((snap) => {
       if (snap.exists() && (snap.data().unreadCount || 0) > 0) {
         updateDoc(threadRef, { unreadCount: 0 }).catch(() => {});
@@ -275,7 +295,6 @@ export default function Messages() {
       [`typing.${user.uid}`]: serverTimestamp(),
     }).catch(() => {});
 
-    // Clear after 3 seconds of no typing
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       updateDoc(typingRef, {
@@ -321,7 +340,6 @@ export default function Messages() {
       const chatId = [user.uid, activeChat.uid].sort().join("_");
       const batch = writeBatch(db);
 
-      // Ensure chat doc exists
       const chatRef = doc(db, "chats", chatId);
       const chatSnap = await getDoc(chatRef);
       if (!chatSnap.exists()) {
@@ -340,22 +358,17 @@ export default function Messages() {
           lastMessage: text || "GIF", unreadCount: 1,
         });
       } else {
-        // Update last message on chat doc
         batch.update(chatRef, { lastMessage: text || "GIF", lastMessageAt: serverTimestamp() });
-        // Update sender's thread
         batch.set(doc(db, "users", user.uid, "chatThreads", chatId), {
           lastMessage: text || "GIF", lastMessageAt: serverTimestamp(), unreadCount: 0,
         }, { merge: true });
-        // Update receiver's thread (increment unread)
         batch.set(doc(db, "users", activeChat.uid, "chatThreads", chatId), {
-          lastMessage: text || "GIF", lastMessageAt: serverTimestamp(),
-          unreadCount: increment(1),
+          lastMessage: text || "GIF", lastMessageAt: serverTimestamp(), unreadCount: increment(1),
         }, { merge: true });
       }
 
       await batch.commit();
 
-      // Add message doc
       await addDoc(collection(db, "chats", chatId, "messages"), {
         senderId: user.uid,
         text: text || "",
@@ -386,10 +399,9 @@ export default function Messages() {
     (u) => u.username?.toLowerCase().includes(search.toLowerCase()) || u.bio?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Total unread count for sidebar badge
   const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);
 
-  usePageAnimations("home");
+  usePageAnimations("messages");
 
   // ── Chat View ──
   if (activeChat) {
@@ -430,7 +442,7 @@ export default function Messages() {
             return (
               <div key={msg.id} className={`chat-bubble ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"}`}>
                 {msg.isGif ? (
-                  <img src={msg.gifUrl} alt="GIF" className="chat-gif" />
+                  <img src={msg.gifUrl} alt="GIF" className="chat-gif" loading="lazy" />
                 ) : (
                   <p>{msg.text}</p>
                 )}
@@ -517,12 +529,11 @@ export default function Messages() {
       ) : filteredConversations.length === 0 && !search ? (
         <div className="home-empty">
           <Send size={40} strokeWidth={1.5} />
-          <p>No messages yet. Follow people to start chatting!</p>
+          <p>No conversations yet. Follow people to start chatting!</p>
         </div>
       ) : (
         <div className="messages-list">
           {search ? (
-            // Show search results for new messages
             filteredUsers.map((u) => (
               <button
                 key={u.uid}
@@ -546,7 +557,6 @@ export default function Messages() {
               </button>
             ))
           ) : (
-            // Existing conversations with last message + unread badge
             filteredConversations.map((c) => (
               <button
                 key={c.uid}

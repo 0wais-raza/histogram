@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   doc, getDoc, collection, query, orderBy, limit,
   deleteDoc, updateDoc, increment, setDoc, serverTimestamp,
-  onSnapshot, where, getDocs,
+  onSnapshot, where, getDocs, addDoc, writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -15,7 +15,7 @@ import { FeedSkeleton } from "../components/LoadingSkeleton";
 import { staticPosts } from "../config/posts";
 import {
   ExternalLink, Trash2, Pencil, MoreHorizontal,
-  Heart, Bookmark, MessageCircle, Share2,
+  Heart, Bookmark, MessageCircle, Share2, Send, X,
   ChevronLeft, ChevronRight, UserPlus, UserMinus, Music, Volume2, VolumeX,
 } from "lucide-react";
 import { alertConfirm, alertError, alertPrompt } from "../utils/alerts";
@@ -43,6 +43,9 @@ export default function Home() {
   const [followingState, setFollowingState] = useState({});
   const [sliderIndices, setSliderIndices] = useState({});
   const [doubleTapHeart, setDoubleTapHeart] = useState(null);
+  const [sharePost, setSharePost] = useState(null); // post being shared
+  const [shareContacts, setShareContacts] = useState([]);
+  const [shareLoading, setShareLoading] = useState(false);
   const lastTap = useRef({});
   const audioRefs = useRef({});
   const likeUnsubsRef = useRef(new Map());
@@ -164,6 +167,7 @@ export default function Home() {
 
   function handleLike(post) {
     const isLiked = likedPosts[post.id];
+    // Optimistic UI update
     setLikeCounts((prev) => ({
       ...prev,
       [post.id]: isLiked ? Math.max(0, (prev[post.id] || post.likesCount || 1) - 1) : (prev[post.id] || post.likesCount || 0) + 1,
@@ -190,13 +194,89 @@ export default function Home() {
     lastTap.current[post.id] = now;
   }
 
-  function handleShare(post) {
-    const url = `${window.location.origin}/home`;
-    if (navigator.share) {
-      navigator.share({ title: `${post.authorName}'s post`, text: post.caption || "", url }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(url);
-      alertError("Link copied!", "Post link copied to clipboard.");
+  // ── Instagram-style Share Sheet ──
+  async function handleShare(post) {
+    setSharePost(post);
+    setShareLoading(true);
+    try {
+      // Load user's conversations + followed users
+      const followingSnap = await getDocs(
+        query(collection(db, "follows"), where("followerId", "==", user.uid), limit(50))
+      );
+      const followingUids = followingSnap.docs.map((d) => d.data().followingId);
+
+      // Get conversations from chatThreads
+      const threadsSnap = await getDocs(
+        query(collection(db, "users", user.uid, "chatThreads"), orderBy("lastMessageAt", "desc"))
+      );
+
+      const contacts = [];
+      const seen = new Set();
+
+      // Add threaded contacts first (sorted by recent)
+      for (const t of threadsSnap.docs) {
+        const td = t.data();
+        const otherUid = td.otherUser;
+        if (seen.has(otherUid)) continue;
+        seen.add(otherUid);
+        try {
+          const s = await getDoc(doc(db, "users", otherUid));
+          if (s.exists() && s.data().username) {
+            const d = s.data();
+            contacts.push({ uid: otherUid, username: d.username, profilePic: d.profilePic, chatId: t.id, lastMessage: td.lastMessage || "" });
+          }
+        } catch {}
+      }
+
+      // Add remaining followed users
+      for (const uid of followingUids) {
+        if (seen.has(uid)) continue;
+        seen.add(uid);
+        try {
+          const s = await getDoc(doc(db, "users", uid));
+          if (s.exists() && s.data().username) {
+            const d = s.data();
+            contacts.push({ uid, username: d.username, profilePic: d.profilePic, chatId: null, lastMessage: "" });
+          }
+        } catch {}
+      }
+
+      setShareContacts(contacts);
+    } catch (err) {
+      alertError("Error", "Could not load contacts.");
+      setSharePost(null);
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
+  async function sendPostToChat(contact) {
+    if (!sharePost || !contact) return;
+    const shareText = sharePost.caption
+      ? `${sharePost.authorName}: ${sharePost.caption.slice(0, 120)}\n\n${window.location.origin}/home`
+      : `${sharePost.authorName} shared a post\n\n${window.location.origin}/home`;
+
+    try {
+      const chatId = [user.uid, contact.uid].sort().join("_");
+      const batch = writeBatch(db);
+      const chatRef = doc(db, "chats", chatId);
+      const chatSnap = await getDoc(chatRef);
+      if (!chatSnap.exists()) {
+        batch.set(chatRef, { participants: [user.uid, contact.uid], lastMessage: shareText, lastMessageAt: serverTimestamp(), typing: {} });
+        batch.set(doc(db, "users", user.uid, "chatThreads", chatId), { chatId, otherUser: contact.uid, lastMessageAt: serverTimestamp(), lastMessage: shareText, unreadCount: 0 });
+        batch.set(doc(db, "users", contact.uid, "chatThreads", chatId), { chatId, otherUser: user.uid, lastMessageAt: serverTimestamp(), lastMessage: shareText, unreadCount: 1 });
+      } else {
+        batch.update(chatRef, { lastMessage: shareText, lastMessageAt: serverTimestamp() });
+        batch.set(doc(db, "users", user.uid, "chatThreads", chatId), { lastMessage: shareText, lastMessageAt: serverTimestamp(), unreadCount: 0 }, { merge: true });
+        batch.set(doc(db, "users", contact.uid, "chatThreads", chatId), { lastMessage: shareText, lastMessageAt: serverTimestamp(), unreadCount: increment(1) }, { merge: true });
+      }
+      await batch.commit();
+      await addDoc(collection(db, "chats", chatId, "messages"), { senderId: user.uid, text: shareText, isGif: false, gifUrl: "", createdAt: serverTimestamp(), read: false });
+
+      setSharePost(null);
+      setShareContacts([]);
+    } catch (err) {
+      alertError("Failed", "Could not send. Please try again.");
     }
   }
 
@@ -460,7 +540,7 @@ export default function Home() {
                     <MessageCircle size={20} />
                     {post.commentsCount > 0 && <span>{post.commentsCount}</span>}
                   </button>
-                  <button className="feed-post-action-btn" onClick={() => handleShare(post)}>
+                  <button className="feed-post-action-btn" onClick={() => handleShare(post)} title="Share">
                     <Share2 size={20} />
                   </button>
                   <button className={`feed-post-action-btn ${savedPosts[post.id] ? "saved" : ""}`} onClick={() => handleSave(post)}>
@@ -472,6 +552,45 @@ export default function Home() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Instagram-style Share Sheet ── */}
+      {sharePost && (
+        <div className="modal-backdrop" onClick={() => { setSharePost(null); setShareContacts([]); }}>
+          <div className="modal share-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="share-sheet-header">
+              <span className="share-sheet-title">Share to...</span>
+              <button className="btn icon-only" onClick={() => { setSharePost(null); setShareContacts([]); }}>
+                <X size={20} />
+              </button>
+            </div>
+            {shareLoading ? (
+              <div className="share-sheet-loading">
+                <span className="setup-btn-spinner" />
+              </div>
+            ) : (
+              <div className="share-sheet-list">
+                {shareContacts.length === 0 ? (
+                  <p className="share-sheet-empty">No contacts. Follow people to share posts!</p>
+                ) : shareContacts.map((c) => (
+                  <button key={c.uid} className="share-sheet-item" onClick={() => sendPostToChat(c)}>
+                    {c.profilePic ? (
+                      <img src={c.profilePic} alt="" className="share-sheet-avatar" />
+                    ) : (
+                      <div className="share-sheet-avatar share-sheet-avatar-fallback">
+                        {c.username?.[0]?.toUpperCase() || "?"}
+                      </div>
+                    )}
+                    <span className="share-sheet-name">@{c.username}</span>
+                    <div className="share-sheet-send">
+                      <Send size={16} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

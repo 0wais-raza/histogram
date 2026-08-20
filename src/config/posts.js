@@ -13,13 +13,13 @@ export const staticPosts = [
     link: "https://sellkar.pk",
     linkLabel: "Learn more",
   },
-  {
-    id: "ad-meeral-collection",
-    type: "ad",
-    image: "/info.webp",
-    caption: "A Real app for real shop use! made by me! MongoDB used!",
-    authorName: "Meeral-collection",
-    link: "https://meeral-collection.vercel.app/",
-    linkLabel: "Learn more",
-  },
+  // {
+  //   id: "ad-meeral-collection",
+  //   type: "ad",
+  //   image: "/info.webp",
+  //   caption: "A Real app for real shop use! made by me! MongoDB used!",
+  //   authorName: "Meeral-collection",
+  //   link: "https://meeral-collection.vercel.app/",
+  //   linkLabel: "Learn more",
+  // },
 ];

@@ -45,8 +45,9 @@ export default function SetupProfile({ profile, onComplete }) {
 
   // Lock body scroll when modal opens
   useEffect(() => {
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => { document.body.style.overflow = prev || ""; };
   }, []);
 
   function handleClose(e) {

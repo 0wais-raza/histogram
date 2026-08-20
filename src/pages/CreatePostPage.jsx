@@ -21,15 +21,8 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
 const MAX_IMAGES = 5;
 
-// Crop presets — Instagram + WhatsApp style
-const CROP_PRESETS = [
-  { key: "free", label: "Free", ratio: null },   // Free-form crop
-  { key: "4:5", label: "4:5", ratio: 4 / 5 },   // Instagram portrait
-  { key: "1:1", label: "1:1", ratio: 1 },         // Instagram square
-  { key: "3:4", label: "3:4", ratio: 3 / 4 },   // Portrait
-  { key: "9:16", label: "9:16", ratio: 9 / 16 }, // Story/Reel
-  { key: "16:9", label: "16:9", ratio: 16 / 9 }, // Wide/landscape
-];
+// Crop preset — Fixed 4:5 Instagram portrait ratio only
+const CROP_RATIO = 4 / 5; // Instagram portrait
 
 // Crop an image File using canvas — accurate viewport-to-natural mapping
 function cropImageFile(file, cropData, aspectKey) {
@@ -39,8 +32,8 @@ function cropImageFile(file, cropData, aspectKey) {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
-      const preset = CROP_PRESETS.find((p) => p.key === aspectKey);
-      const ratio = preset?.ratio;
+      // Always use 4:5 ratio
+      const ratio = CROP_RATIO;
 
       // Viewport dimensions of the crop area (matches CSS .crop-viewport)
       const vpW = window.innerWidth * 0.9;
@@ -64,29 +57,13 @@ function cropImageFile(file, cropData, aspectKey) {
       const natPerVpX = (img.naturalWidth / imgRenderW) / scale;
       const natPerVpY = (img.naturalHeight / imgRenderH) / scale;
 
-      // Crop frame size in viewport pixels (centered in viewport)
+      // Fixed ratio 4:5 — fit within viewport
       let frameW, frameH;
-      if (!ratio) {
-        // Free crop
-        frameW = (cropData.freeW || 70) / 100 * vpW;
-        frameH = (cropData.freeH || 70) / 100 * vpH;
-      } else {
-        // Fixed ratio — fit within viewport
-        if (ratio >= 1) {
-          frameW = Math.min(vpW * 0.9, vpH * 0.9 * ratio);
-          frameH = frameW / ratio;
-          if (frameH > vpH * 0.9) {
-            frameH = vpH * 0.9;
-            frameW = frameH * ratio;
-          }
-        } else {
-          frameH = Math.min(vpH * 0.9, vpW * 0.9 / ratio);
-          frameW = frameH * ratio;
-          if (frameW > vpW * 0.9) {
-            frameW = vpW * 0.9;
-            frameH = frameW / ratio;
-          }
-        }
+      frameH = Math.min(vpH * 0.85, vpW * 0.85 / ratio);
+      frameW = frameH * ratio;
+      if (frameW > vpW * 0.85) {
+        frameW = vpW * 0.85;
+        frameH = frameW / ratio;
       }
 
       // Crop frame center in viewport
@@ -166,15 +143,11 @@ export default function CreatePost() {
   const [musicSearch, setMusicSearch] = useState("");
   const [musicTracks, setMusicTracks] = useState([]);
 
-  // Crop state
+  // Crop state — fixed 4:5 ratio, user drags image to position
   const [cropIndex, setCropIndex] = useState(null);
-  const [cropData, setCropData] = useState({ x: 0, y: 0, scale: 1 });
-  const [cropAspect, setCropAspect] = useState("4:5"); // Default to 4:5 Instagram portrait
+  const [cropData, setCropData] = useState({ x: 0, y: 0, scale: 1.15 });
   const [cropStates, setCropStates] = useState({});
   const cropDragRef = useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
-  // Free crop frame size (percentage of viewport)
-  const [freeCropSize, setFreeCropSize] = useState({ w: 70, h: 70 });
-  const freeCropDragRef = useRef({ dragging: false, handle: null, startX: 0, startY: 0, origW: 0, origH: 0 });
 
   // Music trim state
   const [trimStart, setTrimStart] = useState(0);
@@ -246,8 +219,7 @@ export default function CreatePost() {
   function openCrop(idx) {
     setCropIndex(idx);
     const existing = cropStates[idx];
-    setCropData(existing ? { x: existing.x, y: existing.y, scale: existing.scale } : { x: 0, y: 0, scale: 1 });
-    setCropAspect(existing?.aspect || "4:5");
+    setCropData(existing ? { x: existing.x, y: existing.y, scale: existing.scale } : { x: 0, y: 0, scale: 1.15 });
   }
 
   function handleCropMouseDown(e) {
@@ -272,84 +244,27 @@ export default function CreatePost() {
 
   const handleCropMouseUp = useCallback(() => {
     cropDragRef.current.dragging = false;
-    freeCropDragRef.current.dragging = false;
-  }, []);
-
-  // Free crop handle drag
-  function handleFreeCropHandleDown(e, handle) {
-    e.preventDefault();
-    e.stopPropagation();
-    const cx = e.clientX || e.touches?.[0]?.clientX || 0;
-    const cy = e.clientY || e.touches?.[0]?.clientY || 0;
-    freeCropDragRef.current = {
-      dragging: true,
-      handle,
-      startX: cx,
-      startY: cy,
-      origW: freeCropSize.w,
-      origH: freeCropSize.h,
-    };
-  }
-
-  const handleFreeCropMouseMove = useCallback((e) => {
-    if (!freeCropDragRef.current.dragging) return;
-    const cx = e.clientX || e.touches?.[0]?.clientX || 0;
-    const cy = e.clientY || e.touches?.[0]?.clientY || 0;
-    const dx = cx - freeCropDragRef.current.startX;
-    const dy = cy - freeCropDragRef.current.startY;
-    const { handle, origW, origH } = freeCropDragRef.current;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const dxPct = (dx / vw) * 100;
-    const dyPct = (dy / vh) * 100;
-
-    setFreeCropSize((prev) => {
-      let newW = prev.w;
-      let newH = prev.h;
-      const minSize = 20;
-      const maxSize = 90;
-
-      if (handle.includes("r")) newW = Math.max(minSize, Math.min(maxSize, origW + dxPct * 2));
-      if (handle.includes("l")) newW = Math.max(minSize, Math.min(maxSize, origW - dxPct * 2));
-      if (handle.includes("b")) newH = Math.max(minSize, Math.min(maxSize, origH + dyPct * 2));
-      if (handle.includes("t")) newH = Math.max(minSize, Math.min(maxSize, origH - dyPct * 2));
-
-      // Corner handles: scale both dimensions proportionally for corners
-      if (handle.length === 2) {
-        const avgD = (dxPct + dyPct) / 2;
-        const factor = handle.includes("r") || handle.includes("l") ? dxPct : dyPct;
-        const scaleFactor = (Math.abs(factor) / 50) * (factor > 0 ? 1 : -1);
-        newW = Math.max(minSize, Math.min(maxSize, origW + origW * scaleFactor));
-        newH = Math.max(minSize, Math.min(maxSize, origH + origH * scaleFactor));
-      }
-
-      return { w: newW, h: newH };
-    });
   }, []);
 
   useEffect(() => {
     if (cropIndex !== null) {
       window.addEventListener("mousemove", handleCropMouseMove);
-      window.addEventListener("mousemove", handleFreeCropMouseMove);
       window.addEventListener("mouseup", handleCropMouseUp);
       window.addEventListener("touchmove", handleCropMouseMove, { passive: false });
-      window.addEventListener("touchmove", handleFreeCropMouseMove, { passive: false });
       window.addEventListener("touchend", handleCropMouseUp);
       return () => {
         window.removeEventListener("mousemove", handleCropMouseMove);
-        window.removeEventListener("mousemove", handleFreeCropMouseMove);
         window.removeEventListener("mouseup", handleCropMouseUp);
         window.removeEventListener("touchmove", handleCropMouseMove);
-        window.removeEventListener("touchmove", handleFreeCropMouseMove);
         window.removeEventListener("touchend", handleCropMouseUp);
       };
     }
-  }, [cropIndex, handleCropMouseMove, handleCropMouseUp, handleFreeCropMouseMove]);
+  }, [cropIndex, handleCropMouseMove, handleCropMouseUp]);
 
   function applyCrop() {
     setCropStates((prev) => ({
       ...prev,
-      [cropIndex]: { ...cropData, aspect: cropAspect, freeW: freeCropSize.w, freeH: freeCropSize.h },
+      [cropIndex]: { ...cropData, aspect: "4:5" },
     }));
     setCropIndex(null);
   }
@@ -482,18 +397,18 @@ export default function CreatePost() {
     (m) => m.name.toLowerCase().includes(musicSearch.toLowerCase()) || m.artist.toLowerCase().includes(musicSearch.toLowerCase())
   );
 
-  usePageAnimations("home");
+  usePageAnimations("create");
 
   return (
     <div className="page page-enter create-post-page">
-      {/* ── Crop Overlay ── */}
+      {/* ── Crop Overlay — Fixed 4:5 ratio, drag to adjust ── */}
       {cropIndex !== null && (
         <div className="crop-overlay">
           <div className="crop-header">
             <button type="button" className="btn icon-only" onClick={() => setCropIndex(null)}>
               <X size={20} />
             </button>
-            <span className="crop-title">Crop</span>
+            <span className="crop-title">Adjust Position</span>
             <button type="button" className="btn icon-only crop-check" onClick={applyCrop}>
               <Check size={20} />
             </button>
@@ -508,50 +423,8 @@ export default function CreatePost() {
             >
               <img src={previews[cropIndex]} alt="" className="crop-image" draggable={false} />
             </div>
-            {cropAspect === "free" ? (
-              <div
-                className="crop-frame crop-frame-free-custom"
-                style={{
-                  width: `${freeCropSize.w}%`,
-                  height: `${freeCropSize.h}%`,
-                  top: `${(100 - freeCropSize.h) / 2}%`,
-                  left: `${(100 - freeCropSize.w) / 2}%`,
-                }}
-              >
-                {/* Corner handles */}
-                <div className="crop-handle crop-handle-tl" data-handle="tl" onMouseDown={(e) => handleFreeCropHandleDown(e, "tl")} onTouchStart={(e) => handleFreeCropHandleDown(e, "tl")} />
-                <div className="crop-handle crop-handle-tr" data-handle="tr" onMouseDown={(e) => handleFreeCropHandleDown(e, "tr")} onTouchStart={(e) => handleFreeCropHandleDown(e, "tr")} />
-                <div className="crop-handle crop-handle-bl" data-handle="bl" onMouseDown={(e) => handleFreeCropHandleDown(e, "bl")} onTouchStart={(e) => handleFreeCropHandleDown(e, "bl")} />
-                <div className="crop-handle crop-handle-br" data-handle="br" onMouseDown={(e) => handleFreeCropHandleDown(e, "br")} onTouchStart={(e) => handleFreeCropHandleDown(e, "br")} />
-                {/* Edge handles */}
-                <div className="crop-handle crop-handle-t" data-handle="t" onMouseDown={(e) => handleFreeCropHandleDown(e, "t")} onTouchStart={(e) => handleFreeCropHandleDown(e, "t")} />
-                <div className="crop-handle crop-handle-b" data-handle="b" onMouseDown={(e) => handleFreeCropHandleDown(e, "b")} onTouchStart={(e) => handleFreeCropHandleDown(e, "b")} />
-                <div className="crop-handle crop-handle-l" data-handle="l" onMouseDown={(e) => handleFreeCropHandleDown(e, "l")} onTouchStart={(e) => handleFreeCropHandleDown(e, "l")} />
-                <div className="crop-handle crop-handle-r" data-handle="r" onMouseDown={(e) => handleFreeCropHandleDown(e, "r")} onTouchStart={(e) => handleFreeCropHandleDown(e, "r")} />
-              </div>
-            ) : (
-              <div className={`crop-frame crop-frame-${cropAspect}`} />
-            )}
-          </div>
-
-          <div className="crop-tools">
-            {CROP_PRESETS.map((p) => (
-              <button
-                key={p.key}
-                type="button"
-                className={`crop-aspect-btn ${cropAspect === p.key ? "active" : ""}`}
-                onClick={() => {
-                  setCropAspect(p.key);
-                  if (p.key === "free") {
-                    setFreeCropSize({ w: 70, h: 70 });
-                  }
-                  const defaultScale = p.key === "free" ? 1 : p.key === "1:1" ? 1.2 : p.key === "4:5" ? 1.15 : 1.3;
-                  setCropData({ x: 0, y: 0, scale: defaultScale });
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
+            {/* Fixed 4:5 ratio frame */}
+            <div className="crop-frame crop-frame-portrait" />
           </div>
 
           <div className="crop-zoom-bar">
@@ -618,11 +491,11 @@ export default function CreatePost() {
               {previews.map((src, idx) => (
                 <div key={idx} className="create-post-slide">
                   <img src={src} alt={`Preview ${idx + 1}`} />
-                  {cropStates[idx] && <div className="create-post-cropped-badge"><Crop size={12} /> {cropStates[idx].aspect === "free" ? "Free crop" : cropStates[idx].aspect}</div>}
+                  {cropStates[idx] && <div className="create-post-cropped-badge"><Crop size={12} /> {cropStates[idx].aspect || "4:5"}</div>}
                   <button type="button" className="create-post-remove" onClick={() => removeImage(idx)}>
                     <X size={16} />
                   </button>
-                  <button type="button" className="create-post-crop-btn" onClick={() => openCrop(idx)} title="Crop">
+                  <button type="button" className="create-post-crop-btn" onClick={() => openCrop(idx)} title="Adjust">
                     <Crop size={16} />
                   </button>
                 </div>

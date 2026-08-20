@@ -73,7 +73,7 @@ export default function Explore() {
       u.bio?.toLowerCase().includes(search.toLowerCase())
   );
 
-  usePageAnimations("home");
+  usePageAnimations("explore");
 
   return (
     <div className="page page-enter">

@@ -20,8 +20,10 @@ import CreatePostPage from "./pages/CreatePostPage";
 import SettingsPage from "./pages/SettingsPage";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import { useMicroInteractions } from "./animations";
 
 function AppRoutes() {
+  useMicroInteractions();
   const { user, loading } = useAuth();
   const location = useLocation();
   const isPublicPage = ["/", "/login", "/signup"].includes(location.pathname);

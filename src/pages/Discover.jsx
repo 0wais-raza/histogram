@@ -84,7 +84,7 @@ export default function Discover() {
     return () => { cancelled = true; };
   }, [activeCategory, user]);
 
-  usePageAnimations("home");
+  usePageAnimations("discover");
 
   return (
     <div className="page page-enter">
