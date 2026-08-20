@@ -15,7 +15,7 @@ import { FeedSkeleton } from "../components/LoadingSkeleton";
 import { staticPosts } from "../config/posts";
 import {
   ExternalLink, Trash2, Pencil, MoreHorizontal,
-  Heart, Bookmark, MessageCircle, Share2, Send, X, Check,
+  Heart, Bookmark, MessageCircle, Send, X, Check,
   ChevronLeft, ChevronRight, UserPlus, UserMinus, Music, Volume2, VolumeX,
 } from "lucide-react";
 import { alertConfirm, alertError, alertPrompt } from "../utils/alerts";
@@ -254,9 +254,8 @@ export default function Home() {
 
   async function sendPostToChat(contact) {
     if (!sharePost || !contact) return;
-    const shareText = sharePost.caption
-      ? `${sharePost.authorName}: ${sharePost.caption.slice(0, 120)}\n\n${window.location.origin}/home`
-      : `${sharePost.authorName} shared a post\n\n${window.location.origin}/home`;
+    const postUrl = `${window.location.origin}/post/${sharePost.id}`;
+    const shareText = postUrl;
 
     setSentTo(contact.uid);
     try {
@@ -549,7 +548,7 @@ export default function Home() {
                     {post.commentsCount > 0 && <span>{post.commentsCount}</span>}
                   </button>
                   <button className="feed-post-action-btn" onClick={() => handleShare(post)} title="Share">
-                    <Share2 size={20} />
+                    <Send size={20} />
                   </button>
                   <button className={`feed-post-action-btn ${savedPosts[post.id] ? "saved" : ""}`} onClick={() => handleSave(post)}>
                     <Bookmark size={20} fill={savedPosts[post.id] ? "var(--cyan)" : "none"} />

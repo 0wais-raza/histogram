@@ -17,6 +17,7 @@ import Music from "./pages/Music";
 import Notifications from "./pages/Notifications";
 import Messages from "./pages/Messages";
 import CreatePostPage from "./pages/CreatePostPage";
+import PostDetail from "./pages/PostDetail";
 import SettingsPage from "./pages/SettingsPage";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -50,6 +51,7 @@ function AppRoutes() {
               <Route path="/profile/:uid/followers" element={<Followers />} />
               <Route path="/saved" element={<Saved />} />
               <Route path="/create" element={<CreatePostPage />} />
+              <Route path="/post/:id" element={<PostDetail />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -31,6 +31,8 @@ export default function Landing() {
         confirmButtonText: `<span style="display:flex;align-items:center;gap:8px;"><span>Enter</span></span>`,
         confirmButtonColor: "#863bff",
         buttonsStyling: true,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
         customClass: {
           popup: "swal-custom-popup",
           title: "swal-custom-title",
@@ -73,8 +75,6 @@ export default function Landing() {
         ref={videoRef}
         className="landing-bg-video"
         src="/bg.mp4"
-        autoPlay
-        muted
         loop
         playsInline
         preload="metadata"

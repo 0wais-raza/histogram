@@ -57,14 +57,9 @@ function cropImageFile(file, cropData, aspectKey) {
       const natPerVpX = (img.naturalWidth / imgRenderW) / scale;
       const natPerVpY = (img.naturalHeight / imgRenderH) / scale;
 
-      // Fixed ratio 4:5 — fit within viewport
-      let frameW, frameH;
-      frameH = Math.min(vpH * 0.85, vpW * 0.85 / ratio);
-      frameW = frameH * ratio;
-      if (frameW > vpW * 0.85) {
-        frameW = vpW * 0.85;
-        frameH = frameW / ratio;
-      }
+      // Fixed ratio 4:5 — match CSS .crop-frame-portrait dimensions
+      const frameH = Math.min(vpH * 0.65, vpW * 0.8 * ratio);
+      const frameW = frameH * ratio;
 
       // Crop frame center in viewport
       const frameCenterX = vpW / 2;

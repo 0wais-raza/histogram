@@ -814,8 +814,9 @@
 }
 
 .crop-frame-portrait {
-  width: min(56vw, 56vh * 0.8);
-  height: min(70vw, 70vh);
+  aspect-ratio: 4 / 5;
+  height: 65vh;
+  max-width: 80vw;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -1066,16 +1067,23 @@
 .create-post-add-image {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border: 1px dashed var(--glass-border);
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 16px;
+  border: 2px dashed rgba(134, 59, 255, 0.35);
   border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
+  background: rgba(134, 59, 255, 0.06);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s var(--ease-out);
+  width: 100%;
+}
+
+.create-post-add-image svg {
+  color: var(--accent-bright);
 }
 
 .create-post-add-image:hover {
@@ -1103,7 +1111,7 @@
 
 .create-post-slide img {
   width: 100%;
-  max-height: 300px;
+  aspect-ratio: 4 / 5;
   object-fit: cover;
   display: block;
 }
