@@ -13,7 +13,7 @@ import {
 } from "firebase/auth";
 import {
   Shield, Trash2, Key, User, LogOut, ChevronRight, Lock,
-  Check, X, Info, Eye, EyeOff, AlertTriangle, Instagram,
+  Check, X, Info, Eye, EyeOff, AlertTriangle,
 } from "lucide-react";
 
 const PASSWORD_RULES = [

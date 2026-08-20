@@ -1,14 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
-  collection,
-  query,
-  orderBy,
-  limit,
-  getDocs,
-  doc,
-  getDoc,
-  where,
+  collection, query, orderBy, limit, onSnapshot,
+  doc, getDoc, getDocs, where,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -35,60 +29,59 @@ export default function Notifications() {
 
   useEffect(() => {
     if (!user) return;
-    let cancelled = false;
 
-    async function load() {
-      setLoading(true);
-      try {
-        const followersQ = query(
-          collection(db, "follows"),
-          where("followingId", "==", user.uid),
+    // Realtime follower notifications
+    const followsQ = query(
+      collection(db, "follows"),
+      where("followingId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(20)
+    );
+
+    const unsubFollowers = onSnapshot(followsQ, async (followersSnap) => {
+      const notifs = [];
+
+      for (const d of followersSnap.docs) {
+        const data = d.data();
+        try {
+          const userSnap = await getDoc(doc(db, "users", data.followerId));
+          if (userSnap.exists()) {
+            const u = userSnap.data();
+            notifs.push({
+              id: d.id,
+              type: "follow",
+              userId: data.followerId,
+              username: u.username,
+              profilePic: u.profilePic,
+              createdAt: data.createdAt,
+              text: "started following you",
+            });
+          }
+        } catch {}
+      }
+
+      // Also check posts from people we follow
+      const followingQ = query(
+        collection(db, "follows"),
+        where("followerId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(20)
+      );
+      const followingSnap = await getDocs(followingQ);
+      const followingUids = followingSnap.docs.map((d) => d.data().followingId);
+
+      if (followingUids.length > 0) {
+        const postsQ = query(
+          collection(db, "posts"),
+          where("authorId", "in", followingUids.slice(0, 10)),
           orderBy("createdAt", "desc"),
-          limit(20)
+          limit(10)
         );
-        const followersSnap = await getDocs(followersQ);
-
-        const followingQ = query(
-          collection(db, "follows"),
-          where("followerId", "==", user.uid),
-          orderBy("createdAt", "desc"),
-          limit(20)
-        );
-        const followingSnap = await getDocs(followingQ);
-
-        const notifs = [];
-
-        for (const d of followersSnap.docs) {
-          const data = d.data();
-          try {
-            const userSnap = await getDoc(doc(db, "users", data.followerId));
-            if (userSnap.exists()) {
-              const u = userSnap.data();
-              notifs.push({
-                id: d.id,
-                type: "follow",
-                userId: data.followerId,
-                username: u.username,
-                profilePic: u.profilePic,
-                createdAt: data.createdAt,
-                text: "started following you",
-              });
-            }
-          } catch {}
-        }
-
-        const followingUids = followingSnap.docs.map((d) => d.data().followingId);
-        if (followingUids.length > 0) {
-          const postsQ = query(
-            collection(db, "posts"),
-            where("authorId", "in", followingUids.slice(0, 10)),
-            orderBy("createdAt", "desc"),
-            limit(10)
-          );
-          const postsSnap = await getDocs(postsQ);
-          for (const p of postsSnap.docs) {
-            const pData = p.data();
-            if (pData.likesCount > 0) {
+        const postsSnap = await getDocs(postsQ);
+        for (const p of postsSnap.docs) {
+          const pData = p.data();
+          if (pData.likesCount > 0) {
+            try {
               const authorSnap = await getDoc(doc(db, "users", pData.authorId));
               if (authorSnap.exists()) {
                 const a = authorSnap.data();
@@ -103,22 +96,24 @@ export default function Notifications() {
                   postId: p.id,
                 });
               }
-            }
+            } catch {}
           }
         }
+      }
 
-        notifs.sort((a, b) => {
-          const ta = a.createdAt?.seconds || 0;
-          const tb = b.createdAt?.seconds || 0;
-          return tb - ta;
-        });
+      notifs.sort((a, b) => {
+        const ta = a.createdAt?.seconds || 0;
+        const tb = b.createdAt?.seconds || 0;
+        return tb - ta;
+      });
 
-        if (!cancelled) setNotifications(notifs);
-      } catch {}
-      finally { if (!cancelled) setLoading(false); }
-    }
-    load();
-    return () => { cancelled = true; };
+      setNotifications(notifs);
+      setLoading(false);
+    }, () => {
+      setLoading(false);
+    });
+
+    return unsubFollowers;
   }, [user]);
 
   usePageAnimations("home");

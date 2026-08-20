@@ -16,6 +16,8 @@ import {
   Settings,
   Music,
   Bell,
+  Menu,
+  X,
 } from "lucide-react";
 
 export default function Sidebar() {

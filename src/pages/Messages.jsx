@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   collection, query, limit, getDocs, doc, getDoc, where,
-  addDoc, orderBy, onSnapshot, serverTimestamp, writeBatch,
+  addDoc, orderBy, onSnapshot, serverTimestamp, writeBatch, updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -157,7 +157,6 @@ export default function Messages() {
         await batch.commit();
       } else {
         // Update last message
-        const { updateDoc } = await import("firebase/firestore");
         updateDoc(chatRef, { lastMessage: text || "GIF", lastMessageAt: serverTimestamp() }).catch(() => {});
       }
 

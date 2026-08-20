@@ -216,7 +216,7 @@ export default function Profile() {
           <p className="bio">{profile.bio || "No bio yet."}</p>
           <div className="stats">
             <div className="stat-item"><span className="stat-value">{posts.length}</span><span className="stat-label">Posts</span></div>
-            <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{realFollowerCount ?? profile.followersCount ?? 0}</span><span className="stat-label">Followers</span></div>
+            <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{realFollowerCount ?? profile.followersCount ?? 0}</span><span className="stat-label">Followers</span></Link>
             <Link to={`/profile/${uid}/followers`} className="stat-item stat-link"><span className="stat-value">{realFollowingCount ?? profile.followingCount ?? 0}</span><span className="stat-label">Following</span></Link>
           </div>
           <div className="profile-actions">
