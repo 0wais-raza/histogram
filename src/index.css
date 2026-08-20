@@ -10,6 +10,7 @@
 @import "./styles/pages/landing.css";
 @import "./styles/pages/auth.css";
 @import "./styles/pages/home.css";
+@import "./styles/create-post.css";
 @import "./styles/pages/profile.css";
 @import "./styles/swal.css";
 @import "./styles/sidebar.css";

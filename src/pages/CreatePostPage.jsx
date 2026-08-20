@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   addDoc,
@@ -12,7 +12,7 @@ import { alertError, alertSuccess } from "../utils/alerts";
 import { uploadImage } from "../utils/uploadImage";
 import {
   ImagePlus, X, Send, ChevronLeft, ChevronRight, Music,
-  Volume2, VolumeX, Crop, Scissors, ArrowLeft, Check, ZoomIn, ZoomOut, Play, Pause,
+  Volume2, VolumeX, Scissors, ArrowLeft, Check, Play, Pause,
 } from "lucide-react";
 import RichTextToolbar from "../components/RichTextToolbar";
 import FormattedText from "../components/FormattedText";
@@ -20,108 +20,6 @@ import FormattedText from "../components/FormattedText";
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
 const MAX_IMAGES = 5;
-
-// Crop preset — Fixed 4:3 landscape ratio
-const CROP_RATIO = 4 / 3; // Landscape
-
-// Crop an image File using canvas — accurate viewport-to-natural mapping
-function cropImageFile(file, cropData, aspectKey) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-
-      // Always use 4:3 ratio
-      const ratio = CROP_RATIO;
-
-      // Viewport dimensions of the crop area (matches CSS .crop-viewport)
-      const vpW = window.innerWidth * 0.9;
-      const vpH = window.innerHeight * 0.55;
-
-      // Image rendered size in viewport (respecting object-fit / max constraints)
-      const imgMaxW = window.innerWidth * 0.9;
-      const imgMaxH = window.innerHeight * 0.6;
-      const imgAspect = img.naturalWidth / img.naturalHeight;
-      let imgRenderW, imgRenderH;
-      if (imgAspect > imgMaxW / imgMaxH) {
-        imgRenderW = imgMaxW;
-        imgRenderH = imgMaxW / imgAspect;
-      } else {
-        imgRenderH = imgMaxH;
-        imgRenderW = imgMaxH * imgAspect;
-      }
-
-      // Scale factor: natural pixels per viewport pixel (accounting for zoom)
-      const scale = cropData.scale || 1;
-      const natPerVpX = (img.naturalWidth / imgRenderW) / scale;
-      const natPerVpY = (img.naturalHeight / imgRenderH) / scale;
-
-      // Fixed ratio 4:3 — match CSS .crop-frame-portrait dimensions
-      const frameH = Math.min(vpH * 0.50, 360);
-      const frameW = frameH * ratio;
-
-      // Crop frame center in viewport
-      const frameCenterX = vpW / 2;
-      const frameCenterY = vpH / 2;
-
-      // Image center in viewport (before drag offset)
-      const imgCenterX = vpW / 2;
-      const imgCenterY = vpH / 2;
-
-      // Drag offset (cropData.x/y is in viewport pixels)
-      const dragX = cropData.x || 0;
-      const dragY = cropData.y || 0;
-
-      // Map crop frame to natural image coordinates
-      // Frame top-left in viewport relative to image top-left
-      const frameLeftInVp = frameCenterX - frameW / 2;
-      const frameTopInVp = frameCenterY - frameH / 2;
-      const imgLeftInVp = imgCenterX - imgRenderW / 2 + dragX;
-      const imgTopInVp = imgCenterY - imgRenderH / 2 + dragY;
-
-      // Frame position relative to image (in viewport pixels)
-      const relFrameX = (frameLeftInVp - imgLeftInVp) * scale;
-      const relFrameY = (frameTopInVp - imgTopInVp) * scale;
-
-      // Convert to natural pixels
-      let sx = Math.round(relFrameX * (img.naturalWidth / imgRenderW));
-      let sy = Math.round(relFrameY * (img.naturalHeight / imgRenderH));
-      let sw = Math.round(frameW * natPerVpX);
-      let sh = Math.round(frameH * natPerVpY);
-
-      // Clamp to image bounds
-      sx = Math.max(0, Math.min(sx, img.naturalWidth));
-      sy = Math.max(0, Math.min(sy, img.naturalHeight));
-      sw = Math.min(sw, img.naturalWidth - sx);
-      sh = Math.min(sh, img.naturalHeight - sy);
-
-      // Output at natural crop resolution (capped at reasonable max)
-      const maxOutput = 2048;
-      let outW = sw;
-      let outH = sh;
-      if (outW > maxOutput || outH > maxOutput) {
-        const ratio2 = Math.min(maxOutput / outW, maxOutput / outH);
-        outW = Math.round(outW * ratio2);
-        outH = Math.round(outH * ratio2);
-      }
-
-      canvas.width = outW;
-      canvas.height = outH;
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg", lastModified: Date.now() }));
-        } else {
-          resolve(file);
-        }
-      }, "image/jpeg", 0.92);
-    };
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
-  });
-}
 
 export default function CreatePost() {
   const { user } = useAuth();
@@ -137,12 +35,6 @@ export default function CreatePost() {
   const [showMusicPicker, setShowMusicPicker] = useState(false);
   const [musicSearch, setMusicSearch] = useState("");
   const [musicTracks, setMusicTracks] = useState([]);
-
-  // Crop state — fixed 4:5 ratio, user drags image to position
-  const [cropIndex, setCropIndex] = useState(null);
-  const [cropData, setCropData] = useState({ x: 0, y: 0, scale: 1.15 });
-  const [cropStates, setCropStates] = useState({});
-  const cropDragRef = useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
 
   // Music trim state
   const [trimStart, setTrimStart] = useState(0);
@@ -164,7 +56,6 @@ export default function CreatePost() {
       .catch(() => {});
   }, []);
 
-  // Allow scroll on create post page
   useEffect(() => {
     return () => { document.body.style.overflow = ""; };
   }, []);
@@ -195,72 +86,11 @@ export default function CreatePost() {
   }
 
   function removeImage(idx) {
+    URL.revokeObjectURL(previews[idx]);
     setFiles((prev) => prev.filter((_, i) => i !== idx));
     setPreviews((prev) => prev.filter((_, i) => i !== idx));
-    setCropStates((prev) => {
-      const next = {};
-      Object.entries(prev).forEach(([k, v]) => {
-        const ki = Number(k);
-        if (ki < idx) next[ki] = v;
-        else if (ki > idx) next[ki - 1] = v;
-      });
-      return next;
-    });
-    if (sliderIdx >= idx && sliderIdx > 0) setSliderIdx((s) => s - 1);
-  }
-
-  // ── Crop handlers ──
-  function openCrop(idx) {
-    setCropIndex(idx);
-    const existing = cropStates[idx];
-    setCropData(existing ? { x: existing.x, y: existing.y, scale: existing.scale } : { x: 0, y: 0, scale: 1.15 });
-  }
-
-  function handleCropMouseDown(e) {
-    e.preventDefault();
-    cropDragRef.current = {
-      dragging: true,
-      startX: e.clientX || e.touches?.[0]?.clientX || 0,
-      startY: e.clientY || e.touches?.[0]?.clientY || 0,
-      origX: cropData.x,
-      origY: cropData.y,
-    };
-  }
-
-  const handleCropMouseMove = useCallback((e) => {
-    if (!cropDragRef.current.dragging) return;
-    const cx = e.clientX || e.touches?.[0]?.clientX || 0;
-    const cy = e.clientY || e.touches?.[0]?.clientY || 0;
-    const dx = cx - cropDragRef.current.startX;
-    const dy = cy - cropDragRef.current.startY;
-    setCropData((prev) => ({ ...prev, x: cropDragRef.current.origX + dx, y: cropDragRef.current.origY + dy }));
-  }, []);
-
-  const handleCropMouseUp = useCallback(() => {
-    cropDragRef.current.dragging = false;
-  }, []);
-
-  useEffect(() => {
-    if (cropIndex !== null) {
-      window.addEventListener("mousemove", handleCropMouseMove);
-      window.addEventListener("mouseup", handleCropMouseUp);
-      window.addEventListener("touchmove", handleCropMouseMove, { passive: false });
-      window.addEventListener("touchend", handleCropMouseUp);
-      return () => {
-        window.removeEventListener("mousemove", handleCropMouseMove);
-        window.removeEventListener("mouseup", handleCropMouseUp);
-        window.removeEventListener("touchmove", handleCropMouseMove);
-        window.removeEventListener("touchend", handleCropMouseUp);
-      };
-    }
-  }, [cropIndex, handleCropMouseMove, handleCropMouseUp]);
-
-  function applyCrop() {
-    setCropStates((prev) => ({
-      ...prev,
-      [cropIndex]: { ...cropData, aspect: "4:3" },
-    }));
-    setCropIndex(null);
+    // Always reset to first image on any deletion
+    setSliderIdx(0);
   }
 
   // ── Music trim with audio preview ──
@@ -339,11 +169,7 @@ export default function CreatePost() {
       if (files.length > 0) {
         for (let i = 0; i < files.length; i++) {
           setUploadProgress(`Uploading ${i + 1} of ${files.length}...`);
-          let fileToUpload = files[i];
-          if (cropStates[i]) {
-            fileToUpload = await cropImageFile(files[i], cropStates[i], cropStates[i].aspect);
-          }
-          const url = await uploadImage(fileToUpload);
+          const url = await uploadImage(files[i]);
           imageUrls.push(url);
         }
       }
@@ -394,48 +220,7 @@ export default function CreatePost() {
   usePageAnimations("create");
 
   return (
-    <div className="page page-enter create-post-page">
-      {/* ── Crop Overlay — Fixed 4:5 ratio, drag to adjust ── */}
-      {cropIndex !== null && (
-        <div className="crop-overlay">
-          <div className="crop-header">
-            <button type="button" className="btn icon-only" onClick={() => setCropIndex(null)}>
-              <X size={20} />
-            </button>
-            <span className="crop-title">Adjust Position</span>
-            <button type="button" className="btn icon-only crop-check" onClick={applyCrop}>
-              <Check size={20} />
-            </button>
-          </div>
-
-          <div className="crop-viewport">
-            <div
-              className="crop-image-wrapper"
-              onMouseDown={handleCropMouseDown}
-              onTouchStart={handleCropMouseDown}
-              style={{ transform: `translate(${cropData.x}px, ${cropData.y}px) scale(${cropData.scale})` }}
-            >
-              <img src={previews[cropIndex]} alt="" className="crop-image" draggable={false} />
-            </div>
-            {/* Fixed 4:5 ratio frame */}
-            <div className="crop-frame crop-frame-portrait" />
-          </div>
-
-          <div className="crop-zoom-bar">
-            <ZoomOut size={16} />
-            <input
-              type="range"
-              min="50"
-              max="300"
-              value={Math.round(cropData.scale * 100)}
-              onChange={(e) => setCropData((p) => ({ ...p, scale: Number(e.target.value) / 100 }))}
-              className="crop-zoom-slider"
-            />
-            <ZoomIn size={16} />
-          </div>
-        </div>
-      )}
-
+    <div className="create-post-page-root">
       {/* ── Music Trim Overlay ── */}
       {showTrim && selectedMusic && (
         <div className="trim-overlay">
@@ -469,8 +254,8 @@ export default function CreatePost() {
         </div>
       )}
 
-      {/* ── Main Create Post UI ── */}
-      <div className="create-post-page-header">
+      {/* ── Header (not sticky) ── */}
+      <div className="cp-header">
         <button type="button" className="btn icon-only" onClick={() => navigate(-1)}>
           <ArrowLeft size={20} />
         </button>
@@ -478,113 +263,122 @@ export default function CreatePost() {
         <div style={{ width: 40 }} />
       </div>
 
-      <form className="create-post-form" onSubmit={handleSubmit}>
-        {previews.length > 0 && (
-          <div className="create-post-slider">
-            <div className="create-post-slider-track" style={{ transform: `translateX(-${sliderIdx * 100}%)` }}>
-              {previews.map((src, idx) => (
-                <div key={idx} className="create-post-slide">
-                  <img src={src} alt={`Preview ${idx + 1}`} />
-                  {cropStates[idx] && <div className="create-post-cropped-badge"><Crop size={12} /> {cropStates[idx].aspect || "4:3"}</div>}
-                  <button type="button" className="create-post-remove" onClick={() => removeImage(idx)}>
-                    <X size={16} />
+      {/* ── Scrollable content area ── */}
+      <div className="cp-scroll-area">
+        <form id="cp-form" className="cp-form" onSubmit={handleSubmit}>
+          {/* Image Slider */}
+          {previews.length > 0 && (
+            <div className="cp-slider">
+              <div className="cp-slider-track" style={{ transform: `translateX(-${sliderIdx * 100}%)` }}>
+                {previews.map((src, idx) => (
+                  <div key={idx} className="cp-slide">
+                    <img src={src} alt={`Preview ${idx + 1}`} />
+                    <button type="button" className="cp-remove-btn" onClick={() => removeImage(idx)}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {previews.length > 1 && (
+                <>
+                  <button type="button" className="cp-nav-btn cp-nav-prev" onClick={() => setSliderIdx((i) => Math.max(0, i - 1))} disabled={sliderIdx === 0}>
+                    <ChevronLeft size={18} />
                   </button>
-                  <button type="button" className="create-post-crop-btn" onClick={() => openCrop(idx)} title="Adjust">
-                    <Crop size={16} />
+                  <button type="button" className="cp-nav-btn cp-nav-next" onClick={() => setSliderIdx((i) => Math.min(previews.length - 1, i + 1))} disabled={sliderIdx === previews.length - 1}>
+                    <ChevronRight size={18} />
                   </button>
-                </div>
-              ))}
+                  <div className="cp-dots">
+                    {previews.map((_, i) => (
+                      <span key={i} className={`cp-dot ${i === sliderIdx ? "active" : ""}`} onClick={() => setSliderIdx(i)} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-            {previews.length > 1 && (
+          )}
+
+          {/* Add photos button */}
+          {files.length < MAX_IMAGES && (
+            <button type="button" className="cp-add-btn" onClick={() => fileRef.current?.click()}>
+              <ImagePlus size={18} />
+              {files.length === 0 ? "Add photos" : `Add more (${files.length}/${MAX_IMAGES})`}
+            </button>
+          )}
+
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple onChange={handleFileChange} style={{ display: "none" }} />
+
+          {/* Caption */}
+          <RichTextToolbar textareaRef={captionRef} value={caption} onChange={setCaption} />
+          <textarea ref={captionRef} className="cp-caption" placeholder="Write a caption... (supports **bold**, *italic*, and more)" rows={4} maxLength={2200} value={caption} onChange={(e) => setCaption(e.target.value)} />
+          <p className="cp-count">{caption.length}/2200</p>
+
+          {caption.trim() && (
+            <div className="cp-preview-box">
+              <span className="cp-preview-label">Preview</span>
+              <FormattedText text={caption} />
+            </div>
+          )}
+
+          {/* Music */}
+          <div className="cp-music-section">
+            <button type="button" className="cp-music-btn" onClick={() => setShowMusicPicker(!showMusicPicker)}>
+              <Music size={16} />
+              {selectedMusic ? `${selectedMusic.name} — ${selectedMusic.artist}` : "Add music"}
+            </button>
+            {selectedMusic && (
               <>
-                <button type="button" className="slider-btn slider-prev" onClick={() => setSliderIdx((i) => Math.max(0, i - 1))} disabled={sliderIdx === 0}>
-                  <ChevronLeft size={18} />
+                <button type="button" className={`cp-music-toggle ${musicEnabled ? "active" : ""}`} onClick={() => setMusicEnabled(!musicEnabled)}>
+                  {musicEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
                 </button>
-                <button type="button" className="slider-btn slider-next" onClick={() => setSliderIdx((i) => Math.min(previews.length - 1, i + 1))} disabled={sliderIdx === previews.length - 1}>
-                  <ChevronRight size={18} />
+                <button type="button" className="cp-music-trim-btn" onClick={() => setShowTrim(true)} title="Trim music">
+                  <Scissors size={16} />
                 </button>
-                <div className="slider-dots">
-                  {previews.map((_, i) => (
-                    <span key={i} className={`slider-dot ${i === sliderIdx ? "active" : ""}`} onClick={() => setSliderIdx(i)} />
-                  ))}
-                </div>
               </>
             )}
           </div>
-        )}
 
-        {files.length < MAX_IMAGES && (
-          <button type="button" className="create-post-add-image" onClick={() => fileRef.current?.click()}>
-            <ImagePlus size={18} />
-            {files.length === 0 ? "Add photos" : `Add more (${files.length}/${MAX_IMAGES})`}
-          </button>
-        )}
-
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple onChange={handleFileChange} style={{ display: "none" }} />
-
-        <RichTextToolbar textareaRef={captionRef} value={caption} onChange={setCaption} />
-        <textarea ref={captionRef} className="create-post-caption" placeholder="Write a caption... (supports **bold**, *italic*, and more)" rows={4} maxLength={2200} value={caption} onChange={(e) => setCaption(e.target.value)} />
-        <p className="create-post-count">{caption.length}/2200</p>
-
-        {caption.trim() && (
-          <div className="create-post-preview-box">
-            <span className="create-post-preview-label">Preview</span>
-            <FormattedText text={caption} />
-          </div>
-        )}
-
-        <div className="create-post-music-section">
-          <button type="button" className="create-post-music-btn" onClick={() => setShowMusicPicker(!showMusicPicker)}>
-            <Music size={16} />
-            {selectedMusic ? `${selectedMusic.name} — ${selectedMusic.artist}` : "Add music"}
-          </button>
-          {selectedMusic && (
-            <>
-              <button type="button" className={`create-post-music-toggle ${musicEnabled ? "active" : ""}`} onClick={() => setMusicEnabled(!musicEnabled)}>
-                {musicEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              </button>
-              <button type="button" className="create-post-music-trim-btn" onClick={() => setShowTrim(true)} title="Trim music">
-                <Scissors size={16} />
-              </button>
-            </>
-          )}
-        </div>
-
-        {showMusicPicker && (
-          <div className="music-picker-overlay" onClick={() => { setShowMusicPicker(false); setMusicSearch(""); }}>
-            <div className="music-picker" onClick={(e) => e.stopPropagation()}>
-              <div className="music-picker-header">
-                <h3>Add Music</h3>
-                <button type="button" className="btn icon-only" onClick={() => { setShowMusicPicker(false); setMusicSearch(""); }}>
-                  <X size={20} />
-                </button>
-              </div>
-              <input type="text" placeholder="Search music..." value={musicSearch} onChange={(e) => setMusicSearch(e.target.value)} className="music-picker-search" autoFocus />
-              <div className="music-picker-list">
-                {filteredMusic.length === 0 ? (
-                  <div className="music-picker-empty">
-                    <Music size={24} />
-                    <p>{musicTracks.length === 0 ? "No music files found. Add .mp3 to public/music/ and update manifest.json." : "No matches."}</p>
-                  </div>
-                ) : filteredMusic.map((m) => (
-                  <button key={m.id} type="button" className={`music-picker-item ${selectedMusic?.id === m.id ? "selected" : ""}`}
-                    onClick={() => { setSelectedMusic(selectedMusic?.id === m.id ? null : m); setShowMusicPicker(false); setMusicSearch(""); setTrimStart(0); setTrimEnd(100); }}>
-                    <Music size={14} />
-                    <span className="music-picker-name">{m.name}</span>
-                    <span className="music-picker-artist">{m.artist}</span>
+          {/* Music Picker */}
+          {showMusicPicker && (
+            <div className="music-picker-overlay" onClick={() => { setShowMusicPicker(false); setMusicSearch(""); }}>
+              <div className="music-picker" onClick={(e) => e.stopPropagation()}>
+                <div className="music-picker-header">
+                  <h3>Add Music</h3>
+                  <button type="button" className="btn icon-only" onClick={() => { setShowMusicPicker(false); setMusicSearch(""); }}>
+                    <X size={20} />
                   </button>
-                ))}
+                </div>
+                <input type="text" placeholder="Search music..." value={musicSearch} onChange={(e) => setMusicSearch(e.target.value)} className="music-picker-search" autoFocus />
+                <div className="music-picker-list">
+                  {filteredMusic.length === 0 ? (
+                    <div className="music-picker-empty">
+                      <Music size={24} />
+                      <p>{musicTracks.length === 0 ? "No music files found. Add .mp3 to public/music/ and update manifest.json." : "No matches."}</p>
+                    </div>
+                  ) : filteredMusic.map((m) => (
+                    <button key={m.id} type="button" className={`music-picker-item ${selectedMusic?.id === m.id ? "selected" : ""}`}
+                      onClick={() => { setSelectedMusic(selectedMusic?.id === m.id ? null : m); setShowMusicPicker(false); setMusicSearch(""); setTrimStart(0); setTrimEnd(100); }}>
+                      <Music size={14} />
+                      <span className="music-picker-name">{m.name}</span>
+                      <span className="music-picker-artist">{m.artist}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </form>
+      </div>
 
-        <button type="submit" className="btn primary create-post-submit" disabled={uploading || !canSubmit}>
+      {/* ── Sticky Submit Bar (ALWAYS visible) ── */}
+      <div className="cp-submit-bar">
+        <button type="submit" className="cp-submit-btn" disabled={uploading || !canSubmit} form="cp-form">
           {uploading ? (
             <span className="setup-btn-loading"><span className="setup-btn-spinner" />{uploadProgress || "Posting..."}</span>
           ) : (<><Send size={16} />Share</>)}
         </button>
-      </form>
+      </div>
     </div>
   );
 }
+
+

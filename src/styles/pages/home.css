@@ -396,6 +396,12 @@
   aspect-ratio: 4 / 5;
 }
 
+/* AD posts — cap height so tall portrait images don't take over */
+.feed-post-ad .feed-post-image {
+  max-height: 500px;
+  object-fit: cover;
+}
+
 /* ── Slider controls ── */
 .slider-btn {
   position: absolute;
@@ -1095,6 +1101,7 @@
   position: relative;
   border-radius: var(--radius-md);
   overflow: hidden;
+  max-height: 400px;
 }
 
 .create-post-slider-track {
@@ -1110,7 +1117,7 @@
 
 .create-post-slide img {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  max-height: 400px;
   object-fit: cover;
   display: block;
 }
@@ -1225,6 +1232,7 @@
   border: none;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.15s;
+  margin-top: 8px;
 }
 
 .create-post-submit:hover:not(:disabled) {
@@ -1859,6 +1867,10 @@
     aspect-ratio: 4 / 5;
   }
 
+  .feed-post-ad .feed-post-image {
+    max-height: 400px;
+  }
+
   .explore-user-bio {
     max-width: 180px;
   }
@@ -2428,7 +2440,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  /* -webkit-line-clamp: 2; */
   -webkit-box-orient: vertical;
 }
 
