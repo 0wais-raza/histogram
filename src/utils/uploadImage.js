@@ -24,15 +24,40 @@ export async function uploadImage(file) {
   formData.append("image", base64);
   formData.append("name", `histogram_${Date.now()}`);
 
-  const res = await fetch(IMGBB_API, {
-    method: "POST",
-    body: formData,
-  });
+  let res;
+  try {
+    res = await fetch(IMGBB_API, {
+      method: "POST",
+      body: formData,
+    });
+  } catch (err) {
+    if (!navigator.onLine) {
+      throw new Error("No internet connection. Please check your network and try again.");
+    }
+    throw new Error("Could not reach the image server. Please try again.");
+  }
 
-  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(`Upload failed (server error ${res.status}). Please try again.`);
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error("Image server returned an unexpected response. Please try again.");
+  }
 
   if (!data.success) {
-    throw new Error(data?.error?.message || "Image upload failed.");
+    const errMsg = data?.error?.message || "";
+    if (errMsg.includes("File is too big") || errMsg.includes("too large")) {
+      throw new Error("Image is too large. Please use a smaller file (max 10 MB)."
+      );
+    }
+    if (errMsg.includes("invalid")) {
+      throw new Error("This file type is not supported. Use JPG, PNG, GIF, or WebP.");
+    }
+    throw new Error(errMsg || "Image upload failed. Please try again.");
   }
 
   return data.data.url;

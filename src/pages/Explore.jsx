@@ -12,6 +12,7 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import { Search, Users } from "lucide-react";
+import { UserListSkeleton } from "../components/LoadingSkeleton";
 
 export default function Explore() {
   const { user } = useAuth();
@@ -94,17 +95,7 @@ export default function Explore() {
 
       {loading ? (
         <div className="feed-skeleton-wrap">
-          <div className="skeleton-feed">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton-header">
-                <div className="skeleton-avatar" />
-                <div className="skeleton-lines">
-                  <div className="skeleton-line medium" />
-                  <div className="skeleton-line short" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <UserListSkeleton />
         </div>
       ) : filtered.length === 0 ? (
         <div className="home-empty">

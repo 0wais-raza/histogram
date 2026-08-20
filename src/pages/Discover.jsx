@@ -14,7 +14,7 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import { TrendingUp, Hash, Music, Bookmark, Heart, MessageCircle } from "lucide-react";
-import { FeedSkeleton } from "../components/LoadingSkeleton";
+import { DiscoverSkeleton } from "../components/LoadingSkeleton";
 
 export default function Discover() {
   const { user } = useAuth();
@@ -111,7 +111,7 @@ export default function Discover() {
       </div>
 
       {loading ? (
-        <FeedSkeleton />
+        <DiscoverSkeleton />
       ) : trendingPosts.length === 0 ? (
         <div className="home-empty">
           <TrendingUp size={40} strokeWidth={1.5} />

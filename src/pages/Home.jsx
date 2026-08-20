@@ -49,6 +49,7 @@ export default function Home() {
 
   // ── GLOBAL SOUND STATE ──
   const [globalMuted, setGlobalMuted] = useState(true);
+  const currentPlayingRef = useRef(null); // tracks which post audio is currently playing
 
   // ── Author data fetcher ──
   async function loadAuthorData(postList) {
@@ -199,17 +200,24 @@ export default function Home() {
     }
   }
 
-  async function handleSave(post) {
+  function handleSave(post) {
     const isSaved = savedPosts[post.id];
+    // Instant optimistic UI update
+    setSavedPosts((prev) => ({ ...prev, [post.id]: !isSaved }));
+    // Fire-and-forget DB write
     try {
       if (isSaved) {
-        await deleteDoc(doc(db, "postSaves", `${user.uid}_${post.id}`));
-        setSavedPosts((prev) => ({ ...prev, [post.id]: false }));
+        deleteDoc(doc(db, "postSaves", `${user.uid}_${post.id}`)).catch(() => {
+          setSavedPosts((prev) => ({ ...prev, [post.id]: true })); // revert on failure
+        });
       } else {
-        await setDoc(doc(db, "postSaves", `${user.uid}_${post.id}`), { postId: post.id, userId: user.uid, createdAt: serverTimestamp() });
-        setSavedPosts((prev) => ({ ...prev, [post.id]: true }));
+        setDoc(doc(db, "postSaves", `${user.uid}_${post.id}`), { postId: post.id, userId: user.uid, createdAt: serverTimestamp() }).catch(() => {
+          setSavedPosts((prev) => ({ ...prev, [post.id]: false })); // revert on failure
+        });
       }
-    } catch {}
+    } catch {
+      setSavedPosts((prev) => ({ ...prev, [post.id]: isSaved })); // revert
+    }
   }
 
   async function handleDeletePost(post) {
@@ -240,45 +248,74 @@ export default function Home() {
   }
 
   // ── GLOBAL SOUND TOGGLE — like Instagram ──
-  // Click any sound icon → ALL posts unmute. Click again → ALL mute.
+  // Only ONE post plays at a time — the most visible one.
   const toggleGlobalSound = useCallback(() => {
     const newMuted = !globalMuted;
     setGlobalMuted(newMuted);
-    // Apply to all audio elements
-    Object.values(audioRefs.current).forEach((audio) => {
-      audio.muted = newMuted;
-      if (!newMuted) audio.play().catch(() => {});
-      else audio.pause();
-    });
+    if (newMuted) {
+      // Mute ALL
+      Object.values(audioRefs.current).forEach((audio) => {
+        audio.muted = true;
+        audio.pause();
+      });
+      currentPlayingRef.current = null;
+    }
+    // When unmuted, the IntersectionObserver will pick the most visible post
   }, [globalMuted]);
 
-  // Initialize audio + IntersectionObserver
+  // Initialize audio + IntersectionObserver — only ONE post plays at a time
   useEffect(() => {
     posts.forEach((post) => {
       if (post.musicId && musicMap[post.musicId] && !audioRefs.current[post.id]) {
         const audio = new Audio(musicMap[post.musicId]);
         audio.loop = true;
-        audio.muted = true; // All start silent
+        audio.muted = true;
         audio.preload = "metadata";
         audioRefs.current[post.id] = audio;
       }
     });
 
+    // Track all visible posts, play only the MOST visible one
+    const visibilityMap = new Map(); // postId → intersectionRatio
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           const postId = entry.target.dataset.postId;
-          const audio = audioRefs.current[postId];
-          if (!audio) return;
+          if (!postId) return;
           if (entry.isIntersecting) {
-            audio.currentTime = 0;
-            if (!globalMuted) audio.play().catch(() => {});
+            visibilityMap.set(postId, entry.intersectionRatio);
+          } else {
+            visibilityMap.delete(postId);
+          }
+        });
+
+        // Find the MOST visible post
+        let bestPostId = null;
+        let bestRatio = 0;
+        visibilityMap.forEach((ratio, id) => {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestPostId = id;
+          }
+        });
+
+        // Pause ALL, then play ONLY the best one
+        Object.entries(audioRefs.current).forEach(([id, audio]) => {
+          if (id === bestPostId && !globalMuted) {
+            if (currentPlayingRef.current !== id) {
+              audio.currentTime = 0;
+              audio.muted = false;
+              audio.play().catch(() => {});
+              currentPlayingRef.current = id;
+            }
           } else {
             audio.pause();
+            audio.muted = true;
           }
         });
       },
-      { threshold: 0.5 }
+      { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] }
     );
 
     const postEls = document.querySelectorAll("[data-post-id]");
@@ -286,7 +323,8 @@ export default function Home() {
 
     return () => {
       observer.disconnect();
-      Object.values(audioRefs.current).forEach((a) => a.pause());
+      Object.values(audioRefs.current).forEach((a) => { a.pause(); a.muted = true; });
+      currentPlayingRef.current = null;
     };
   }, [posts, globalMuted]); // eslint-disable-line react-hooks/exhaustive-deps
 

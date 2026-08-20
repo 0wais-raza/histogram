@@ -36,8 +36,9 @@ export default function Login() {
   async function handleGoogleLogin() {
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
-      navigate("/home");
+      const result = await signInWithGoogle();
+      // signInWithGoogle returns null when redirect is triggered
+      if (result) navigate("/home");
     } catch (err) {
       const msg = err.message.replace("Firebase: ", "");
       if (!msg.includes("popup-closed-by-user")) {
@@ -161,7 +162,15 @@ function friendlyAuthError(msg) {
     return "No account found with those credentials.";
   if (msg.includes("too-many-requests"))
     return "Too many attempts. Please wait a few minutes and try again.";
-  if (msg.includes("network-request-failed"))
-    return "Network error. Check your connection and try again.";
+  if (msg.includes("network-request-failed") || msg.includes("network"))
+    return "No internet connection. Please check your network and try again.";
+  if (msg.includes("popup-blocked"))
+    return "Pop-up was blocked by your browser. Redirecting to Google sign-in...";
+  if (msg.includes("popup-closed-by-user"))
+    return "Sign-in cancelled. You closed the pop-up.";
+  if (msg.includes("cancelled-popup-request"))
+    return "Sign-in was cancelled. Please try again.";
+  if (msg.includes("internal-error"))
+    return "Something went wrong on our end. Please try again in a moment.";
   return msg || "Something went wrong. Please try again.";
 }

@@ -8,7 +8,7 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import { Heart, UserPlus, MessageCircle, Bell } from "lucide-react";
-import { FeedSkeleton } from "../components/LoadingSkeleton";
+import { NotifSkeleton } from "../components/LoadingSkeleton";
 
 function timeAgo(ts) {
   if (!ts?.seconds) return "";
@@ -127,7 +127,7 @@ export default function Notifications() {
       </div>
 
       {loading ? (
-        <FeedSkeleton />
+        <NotifSkeleton />
       ) : notifications.length === 0 ? (
         <div className="home-empty">
           <Bell size={40} strokeWidth={1.5} />

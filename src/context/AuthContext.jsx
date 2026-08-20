@@ -3,6 +3,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut,
   updateProfile,
@@ -79,12 +81,8 @@ export function AuthProvider({ children }) {
     return cred.user;
   }
 
-  /** Google Sign-in */
-  async function signInWithGoogle() {
-    const result = await signInWithPopup(auth, googleProvider);
-    const u = result.user;
-
-    // Check if user doc exists, create if not
+  /** Ensure user doc exists after any sign-in (popup or redirect) */
+  async function ensureUserDoc(u) {
     const userDoc = await getDoc(doc(db, "users", u.uid));
     if (!userDoc.exists()) {
       await setDoc(doc(db, "users", u.uid), {
@@ -101,8 +99,38 @@ export function AuthProvider({ children }) {
     } else if (!userDoc.data().profilePic && u.photoURL) {
       await setDoc(doc(db, "users", u.uid), { profilePic: u.photoURL }, { merge: true });
     }
+  }
 
-    return u;
+  // Handle redirect result on mount
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          ensureUserDoc(result.user);
+        }
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Google Sign-in — tries popup first, falls back to redirect if blocked */
+  async function signInWithGoogle() {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      await ensureUserDoc(result.user);
+      return result.user;
+    } catch (err) {
+      // If popup was blocked or closed, fall back to redirect
+      const code = err.code || "";
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/cancelled-popup-request" ||
+        code === "auth/popup-closed-by-user"
+      ) {
+        await signInWithRedirect(auth, googleProvider);
+        return null; // redirect will navigate away
+      }
+      throw err; // re-throw real errors
+    }
   }
 
   /** Claim a unique username */

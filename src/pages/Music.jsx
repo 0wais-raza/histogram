@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePageAnimations } from "../animations";
 import { Music as MusicIcon, Play, Pause, Search, Disc, Volume2, VolumeX } from "lucide-react";
+import { MusicSkeleton } from "../components/LoadingSkeleton";
 
 export default function Music() {
   const [search, setSearch] = useState("");
@@ -148,7 +149,7 @@ export default function Music() {
       )}
 
       {loading ? (
-        <div className="home-empty"><p>Loading music...</p></div>
+        <MusicSkeleton />
       ) : (
         <div className="music-list">
           {filtered.map((m) => (

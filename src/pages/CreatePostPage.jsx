@@ -15,20 +15,23 @@ import {
   Volume2, VolumeX, Crop, Scissors, ArrowLeft, Check, ZoomIn, ZoomOut, Play, Pause,
 } from "lucide-react";
 import RichTextToolbar from "../components/RichTextToolbar";
+import FormattedText from "../components/FormattedText";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
 const MAX_IMAGES = 5;
 
-// Crop presets — Instagram-like
+// Crop presets — Instagram + WhatsApp style
 const CROP_PRESETS = [
-  { key: "free", label: "Free", ratio: null },
-  { key: "4:5", label: "4:5", ratio: 4 / 5 },   // Instagram portrait (default)
+  { key: "free", label: "Free", ratio: null },   // Free-form crop
+  { key: "4:5", label: "4:5", ratio: 4 / 5 },   // Instagram portrait
   { key: "1:1", label: "1:1", ratio: 1 },         // Instagram square
-  { key: "16:9", label: "16:9", ratio: 16 / 9 },  // Wide/landscape
+  { key: "3:4", label: "3:4", ratio: 3 / 4 },   // Portrait
+  { key: "9:16", label: "9:16", ratio: 9 / 16 }, // Story/Reel
+  { key: "16:9", label: "16:9", ratio: 16 / 9 }, // Wide/landscape
 ];
 
-// Crop an image File using canvas — proper aspect-ratio aware cropping
+// Crop an image File using canvas — accurate viewport-to-natural mapping
 function cropImageFile(file, cropData, aspectKey) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -39,59 +42,101 @@ function cropImageFile(file, cropData, aspectKey) {
       const preset = CROP_PRESETS.find((p) => p.key === aspectKey);
       const ratio = preset?.ratio;
 
-      let cropW, cropH;
+      // Viewport dimensions of the crop area (matches CSS .crop-viewport)
+      const vpW = window.innerWidth * 0.9;
+      const vpH = window.innerHeight * 0.55;
 
-      if (!ratio) {
-        // Free crop — use full image
-        cropW = img.naturalWidth;
-        cropH = img.naturalHeight;
+      // Image rendered size in viewport (respecting object-fit / max constraints)
+      const imgMaxW = window.innerWidth * 0.9;
+      const imgMaxH = window.innerHeight * 0.6;
+      const imgAspect = img.naturalWidth / img.naturalHeight;
+      let imgRenderW, imgRenderH;
+      if (imgAspect > imgMaxW / imgMaxH) {
+        imgRenderW = imgMaxW;
+        imgRenderH = imgMaxW / imgAspect;
       } else {
-        // Calculate crop region from viewport crop frame
-        const vw = window.innerWidth * 0.9;
-        const vh = window.innerHeight * 0.55;
-
-        if (ratio >= 1) {
-          // Landscape or square
-          cropW = vw / cropData.scale;
-          cropH = cropW / ratio;
-          if (cropH > vh / cropData.scale) {
-            cropH = vh / cropData.scale;
-            cropW = cropH * ratio;
-          }
-        } else {
-          // Portrait
-          cropH = vh / cropData.scale;
-          cropW = cropH * ratio;
-          if (cropW > vw / cropData.scale) {
-            cropW = vw / cropData.scale;
-            cropH = cropW / ratio;
-          }
-        }
-
-        // Map viewport crop to natural image coordinates
-        cropW = (cropW / vw) * img.naturalWidth;
-        cropH = (cropH / vh) * img.naturalHeight;
+        imgRenderH = imgMaxH;
+        imgRenderW = imgMaxH * imgAspect;
       }
 
-      // Clamp
-      cropW = Math.min(cropW, img.naturalWidth);
-      cropH = Math.min(cropH, img.naturalHeight);
+      // Scale factor: natural pixels per viewport pixel (accounting for zoom)
+      const scale = cropData.scale || 1;
+      const natPerVpX = (img.naturalWidth / imgRenderW) / scale;
+      const natPerVpY = (img.naturalHeight / imgRenderH) / scale;
 
-      // Source position — center with offset from drag
-      const offsetX = (cropData.x / (cropData.scale || 1)) * (img.naturalWidth / (window.innerWidth * 0.9));
-      const offsetY = (cropData.y / (cropData.scale || 1)) * (img.naturalHeight / (window.innerHeight * 0.55));
+      // Crop frame size in viewport pixels (centered in viewport)
+      let frameW, frameH;
+      if (!ratio) {
+        // Free crop
+        frameW = (cropData.freeW || 70) / 100 * vpW;
+        frameH = (cropData.freeH || 70) / 100 * vpH;
+      } else {
+        // Fixed ratio — fit within viewport
+        if (ratio >= 1) {
+          frameW = Math.min(vpW * 0.9, vpH * 0.9 * ratio);
+          frameH = frameW / ratio;
+          if (frameH > vpH * 0.9) {
+            frameH = vpH * 0.9;
+            frameW = frameH * ratio;
+          }
+        } else {
+          frameH = Math.min(vpH * 0.9, vpW * 0.9 / ratio);
+          frameW = frameH * ratio;
+          if (frameW > vpW * 0.9) {
+            frameW = vpW * 0.9;
+            frameH = frameW / ratio;
+          }
+        }
+      }
 
-      let sx = Math.max(0, (img.naturalWidth - cropW) / 2 - offsetX);
-      let sy = Math.max(0, (img.naturalHeight - cropH) / 2 - offsetY);
+      // Crop frame center in viewport
+      const frameCenterX = vpW / 2;
+      const frameCenterY = vpH / 2;
 
-      // Clamp source to image bounds
-      sx = Math.max(0, Math.min(sx, img.naturalWidth - cropW));
-      sy = Math.max(0, Math.min(sy, img.naturalHeight - cropH));
+      // Image center in viewport (before drag offset)
+      const imgCenterX = vpW / 2;
+      const imgCenterY = vpH / 2;
 
-      // Use natural crop dimensions for output
-      canvas.width = Math.round(cropW);
-      canvas.height = Math.round(cropH);
-      ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
+      // Drag offset (cropData.x/y is in viewport pixels)
+      const dragX = cropData.x || 0;
+      const dragY = cropData.y || 0;
+
+      // Map crop frame to natural image coordinates
+      // Frame top-left in viewport relative to image top-left
+      const frameLeftInVp = frameCenterX - frameW / 2;
+      const frameTopInVp = frameCenterY - frameH / 2;
+      const imgLeftInVp = imgCenterX - imgRenderW / 2 + dragX;
+      const imgTopInVp = imgCenterY - imgRenderH / 2 + dragY;
+
+      // Frame position relative to image (in viewport pixels)
+      const relFrameX = (frameLeftInVp - imgLeftInVp) * scale;
+      const relFrameY = (frameTopInVp - imgTopInVp) * scale;
+
+      // Convert to natural pixels
+      let sx = Math.round(relFrameX * (img.naturalWidth / imgRenderW));
+      let sy = Math.round(relFrameY * (img.naturalHeight / imgRenderH));
+      let sw = Math.round(frameW * natPerVpX);
+      let sh = Math.round(frameH * natPerVpY);
+
+      // Clamp to image bounds
+      sx = Math.max(0, Math.min(sx, img.naturalWidth));
+      sy = Math.max(0, Math.min(sy, img.naturalHeight));
+      sw = Math.min(sw, img.naturalWidth - sx);
+      sh = Math.min(sh, img.naturalHeight - sy);
+
+      // Output at natural crop resolution (capped at reasonable max)
+      const maxOutput = 2048;
+      let outW = sw;
+      let outH = sh;
+      if (outW > maxOutput || outH > maxOutput) {
+        const ratio2 = Math.min(maxOutput / outW, maxOutput / outH);
+        outW = Math.round(outW * ratio2);
+        outH = Math.round(outH * ratio2);
+      }
+
+      canvas.width = outW;
+      canvas.height = outH;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
 
       canvas.toBlob((blob) => {
         if (blob) {
@@ -127,6 +172,9 @@ export default function CreatePost() {
   const [cropAspect, setCropAspect] = useState("4:5"); // Default to 4:5 Instagram portrait
   const [cropStates, setCropStates] = useState({});
   const cropDragRef = useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
+  // Free crop frame size (percentage of viewport)
+  const [freeCropSize, setFreeCropSize] = useState({ w: 70, h: 70 });
+  const freeCropDragRef = useRef({ dragging: false, handle: null, startX: 0, startY: 0, origW: 0, origH: 0 });
 
   // Music trim state
   const [trimStart, setTrimStart] = useState(0);
@@ -224,27 +272,84 @@ export default function CreatePost() {
 
   const handleCropMouseUp = useCallback(() => {
     cropDragRef.current.dragging = false;
+    freeCropDragRef.current.dragging = false;
+  }, []);
+
+  // Free crop handle drag
+  function handleFreeCropHandleDown(e, handle) {
+    e.preventDefault();
+    e.stopPropagation();
+    const cx = e.clientX || e.touches?.[0]?.clientX || 0;
+    const cy = e.clientY || e.touches?.[0]?.clientY || 0;
+    freeCropDragRef.current = {
+      dragging: true,
+      handle,
+      startX: cx,
+      startY: cy,
+      origW: freeCropSize.w,
+      origH: freeCropSize.h,
+    };
+  }
+
+  const handleFreeCropMouseMove = useCallback((e) => {
+    if (!freeCropDragRef.current.dragging) return;
+    const cx = e.clientX || e.touches?.[0]?.clientX || 0;
+    const cy = e.clientY || e.touches?.[0]?.clientY || 0;
+    const dx = cx - freeCropDragRef.current.startX;
+    const dy = cy - freeCropDragRef.current.startY;
+    const { handle, origW, origH } = freeCropDragRef.current;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const dxPct = (dx / vw) * 100;
+    const dyPct = (dy / vh) * 100;
+
+    setFreeCropSize((prev) => {
+      let newW = prev.w;
+      let newH = prev.h;
+      const minSize = 20;
+      const maxSize = 90;
+
+      if (handle.includes("r")) newW = Math.max(minSize, Math.min(maxSize, origW + dxPct * 2));
+      if (handle.includes("l")) newW = Math.max(minSize, Math.min(maxSize, origW - dxPct * 2));
+      if (handle.includes("b")) newH = Math.max(minSize, Math.min(maxSize, origH + dyPct * 2));
+      if (handle.includes("t")) newH = Math.max(minSize, Math.min(maxSize, origH - dyPct * 2));
+
+      // Corner handles: scale both dimensions proportionally for corners
+      if (handle.length === 2) {
+        const avgD = (dxPct + dyPct) / 2;
+        const factor = handle.includes("r") || handle.includes("l") ? dxPct : dyPct;
+        const scaleFactor = (Math.abs(factor) / 50) * (factor > 0 ? 1 : -1);
+        newW = Math.max(minSize, Math.min(maxSize, origW + origW * scaleFactor));
+        newH = Math.max(minSize, Math.min(maxSize, origH + origH * scaleFactor));
+      }
+
+      return { w: newW, h: newH };
+    });
   }, []);
 
   useEffect(() => {
     if (cropIndex !== null) {
       window.addEventListener("mousemove", handleCropMouseMove);
+      window.addEventListener("mousemove", handleFreeCropMouseMove);
       window.addEventListener("mouseup", handleCropMouseUp);
       window.addEventListener("touchmove", handleCropMouseMove, { passive: false });
+      window.addEventListener("touchmove", handleFreeCropMouseMove, { passive: false });
       window.addEventListener("touchend", handleCropMouseUp);
       return () => {
         window.removeEventListener("mousemove", handleCropMouseMove);
+        window.removeEventListener("mousemove", handleFreeCropMouseMove);
         window.removeEventListener("mouseup", handleCropMouseUp);
         window.removeEventListener("touchmove", handleCropMouseMove);
+        window.removeEventListener("touchmove", handleFreeCropMouseMove);
         window.removeEventListener("touchend", handleCropMouseUp);
       };
     }
-  }, [cropIndex, handleCropMouseMove, handleCropMouseUp]);
+  }, [cropIndex, handleCropMouseMove, handleCropMouseUp, handleFreeCropMouseMove]);
 
   function applyCrop() {
     setCropStates((prev) => ({
       ...prev,
-      [cropIndex]: { ...cropData, aspect: cropAspect },
+      [cropIndex]: { ...cropData, aspect: cropAspect, freeW: freeCropSize.w, freeH: freeCropSize.h },
     }));
     setCropIndex(null);
   }
@@ -360,7 +465,12 @@ export default function CreatePost() {
       alertSuccess("Posted!", "Your post has been shared.");
       navigate(`/profile/${user.uid}`);
     } catch (err) {
-      alertError("Post failed", err.message.replace("Firebase: ", "") || "Something went wrong.");
+      const msg = err.message || "";
+      if (msg.includes("network") || msg.includes("offline") || !navigator.onLine) {
+        alertError("No internet", "You appear to be offline. Please check your connection and try again.");
+      } else {
+        alertError("Post failed", msg.replace("Firebase: ", "") || "Something went wrong. Please try again.");
+      }
     } finally {
       setUploading(false);
       setUploadProgress("");
@@ -398,7 +508,30 @@ export default function CreatePost() {
             >
               <img src={previews[cropIndex]} alt="" className="crop-image" draggable={false} />
             </div>
-            <div className={`crop-frame crop-frame-${cropAspect}`} />
+            {cropAspect === "free" ? (
+              <div
+                className="crop-frame crop-frame-free-custom"
+                style={{
+                  width: `${freeCropSize.w}%`,
+                  height: `${freeCropSize.h}%`,
+                  top: `${(100 - freeCropSize.h) / 2}%`,
+                  left: `${(100 - freeCropSize.w) / 2}%`,
+                }}
+              >
+                {/* Corner handles */}
+                <div className="crop-handle crop-handle-tl" data-handle="tl" onMouseDown={(e) => handleFreeCropHandleDown(e, "tl")} onTouchStart={(e) => handleFreeCropHandleDown(e, "tl")} />
+                <div className="crop-handle crop-handle-tr" data-handle="tr" onMouseDown={(e) => handleFreeCropHandleDown(e, "tr")} onTouchStart={(e) => handleFreeCropHandleDown(e, "tr")} />
+                <div className="crop-handle crop-handle-bl" data-handle="bl" onMouseDown={(e) => handleFreeCropHandleDown(e, "bl")} onTouchStart={(e) => handleFreeCropHandleDown(e, "bl")} />
+                <div className="crop-handle crop-handle-br" data-handle="br" onMouseDown={(e) => handleFreeCropHandleDown(e, "br")} onTouchStart={(e) => handleFreeCropHandleDown(e, "br")} />
+                {/* Edge handles */}
+                <div className="crop-handle crop-handle-t" data-handle="t" onMouseDown={(e) => handleFreeCropHandleDown(e, "t")} onTouchStart={(e) => handleFreeCropHandleDown(e, "t")} />
+                <div className="crop-handle crop-handle-b" data-handle="b" onMouseDown={(e) => handleFreeCropHandleDown(e, "b")} onTouchStart={(e) => handleFreeCropHandleDown(e, "b")} />
+                <div className="crop-handle crop-handle-l" data-handle="l" onMouseDown={(e) => handleFreeCropHandleDown(e, "l")} onTouchStart={(e) => handleFreeCropHandleDown(e, "l")} />
+                <div className="crop-handle crop-handle-r" data-handle="r" onMouseDown={(e) => handleFreeCropHandleDown(e, "r")} onTouchStart={(e) => handleFreeCropHandleDown(e, "r")} />
+              </div>
+            ) : (
+              <div className={`crop-frame crop-frame-${cropAspect}`} />
+            )}
           </div>
 
           <div className="crop-tools">
@@ -409,6 +542,9 @@ export default function CreatePost() {
                 className={`crop-aspect-btn ${cropAspect === p.key ? "active" : ""}`}
                 onClick={() => {
                   setCropAspect(p.key);
+                  if (p.key === "free") {
+                    setFreeCropSize({ w: 70, h: 70 });
+                  }
                   const defaultScale = p.key === "free" ? 1 : p.key === "1:1" ? 1.2 : p.key === "4:5" ? 1.15 : 1.3;
                   setCropData({ x: 0, y: 0, scale: defaultScale });
                 }}
@@ -523,6 +659,13 @@ export default function CreatePost() {
         <textarea ref={captionRef} className="create-post-caption" placeholder="Write a caption... (supports **bold**, *italic*, and more)" rows={4} maxLength={2200} value={caption} onChange={(e) => setCaption(e.target.value)} />
         <p className="create-post-count">{caption.length}/2200</p>
 
+        {caption.trim() && (
+          <div className="create-post-preview-box">
+            <span className="create-post-preview-label">Preview</span>
+            <FormattedText text={caption} />
+          </div>
+        )}
+
         <div className="create-post-music-section">
           <button type="button" className="create-post-music-btn" onClick={() => setShowMusicPicker(!showMusicPicker)}>
             <Music size={16} />
@@ -541,22 +684,30 @@ export default function CreatePost() {
         </div>
 
         {showMusicPicker && (
-          <div className="music-picker">
-            <input type="text" placeholder="Search music..." value={musicSearch} onChange={(e) => setMusicSearch(e.target.value)} className="music-picker-search" autoFocus />
-            <div className="music-picker-list">
-              {filteredMusic.length === 0 ? (
-                <div className="music-picker-empty">
-                  <Music size={24} />
-                  <p>{musicTracks.length === 0 ? "No music files found. Add .mp3 to public/music/ and update manifest.json." : "No matches."}</p>
-                </div>
-              ) : filteredMusic.map((m) => (
-                <button key={m.id} type="button" className={`music-picker-item ${selectedMusic?.id === m.id ? "selected" : ""}`}
-                  onClick={() => { setSelectedMusic(selectedMusic?.id === m.id ? null : m); setShowMusicPicker(false); setMusicSearch(""); setTrimStart(0); setTrimEnd(100); }}>
-                  <Music size={14} />
-                  <span className="music-picker-name">{m.name}</span>
-                  <span className="music-picker-artist">{m.artist}</span>
+          <div className="music-picker-overlay" onClick={() => { setShowMusicPicker(false); setMusicSearch(""); }}>
+            <div className="music-picker" onClick={(e) => e.stopPropagation()}>
+              <div className="music-picker-header">
+                <h3>Add Music</h3>
+                <button type="button" className="btn icon-only" onClick={() => { setShowMusicPicker(false); setMusicSearch(""); }}>
+                  <X size={20} />
                 </button>
-              ))}
+              </div>
+              <input type="text" placeholder="Search music..." value={musicSearch} onChange={(e) => setMusicSearch(e.target.value)} className="music-picker-search" autoFocus />
+              <div className="music-picker-list">
+                {filteredMusic.length === 0 ? (
+                  <div className="music-picker-empty">
+                    <Music size={24} />
+                    <p>{musicTracks.length === 0 ? "No music files found. Add .mp3 to public/music/ and update manifest.json." : "No matches."}</p>
+                  </div>
+                ) : filteredMusic.map((m) => (
+                  <button key={m.id} type="button" className={`music-picker-item ${selectedMusic?.id === m.id ? "selected" : ""}`}
+                    onClick={() => { setSelectedMusic(selectedMusic?.id === m.id ? null : m); setShowMusicPicker(false); setMusicSearch(""); setTrimStart(0); setTrimEnd(100); }}>
+                    <Music size={14} />
+                    <span className="music-picker-name">{m.name}</span>
+                    <span className="music-picker-artist">{m.artist}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

@@ -114,8 +114,8 @@ export default function Signup() {
   async function handleGoogleSignup() {
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
-      navigate("/home");
+      const result = await signInWithGoogle();
+      if (result) navigate("/home");
     } catch (err) {
       const msg = err.message.replace("Firebase: ", "");
       if (!msg.includes("popup-closed-by-user")) {
@@ -229,5 +229,13 @@ function friendlyAuthError(msg) {
     return "An account with this email already exists.";
   if (msg.includes("invalid-email")) return "That email address is invalid.";
   if (msg.includes("weak-password")) return "Choose a stronger password.";
+  if (msg.includes("network-request-failed") || msg.includes("network"))
+    return "No internet connection. Please check your network and try again.";
+  if (msg.includes("popup-blocked"))
+    return "Pop-up was blocked by your browser. Redirecting to Google sign-in...";
+  if (msg.includes("popup-closed-by-user"))
+    return "Sign-in cancelled. You closed the pop-up.";
+  if (msg.includes("internal-error"))
+    return "Something went wrong on our end. Please try again in a moment.";
   return msg || "Something went wrong. Please try again.";
 }
