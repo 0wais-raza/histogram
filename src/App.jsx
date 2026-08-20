@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
+import ScrollToTop from "./components/ScrollToTop";
 import PageTransition from "./components/PageTransition";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -18,6 +20,7 @@ import Notifications from "./pages/Notifications";
 import Messages from "./pages/Messages";
 import CreatePostPage from "./pages/CreatePostPage";
 import PostDetail from "./pages/PostDetail";
+import NotFound from "./pages/NotFound";
 import SettingsPage from "./pages/SettingsPage";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -53,7 +56,7 @@ function AppRoutes() {
               <Route path="/create" element={<CreatePostPage />} />
               <Route path="/post/:id" element={<PostDetail />} />
             </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </PageTransition>
       </main>
@@ -66,7 +69,10 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <AppRoutes />
+          <ErrorBoundary>
+            <AppRoutes />
+            <ScrollToTop />
+          </ErrorBoundary>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

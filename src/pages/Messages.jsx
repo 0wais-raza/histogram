@@ -522,6 +522,17 @@ export default function Messages() {
               <div key={msg.id} className={`chat-bubble ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"} ${isPending ? "chat-bubble-pending" : ""} ${isFailed ? "chat-bubble-failed" : ""}`}>
                 {msg.isGif ? (
                   <img src={msg.gifUrl} alt="GIF" className="chat-gif" loading="lazy" />
+                ) : msg.sharePreview ? (
+                  <a href={msg.sharePreview.postUrl} target="_blank" rel="noopener noreferrer" className="chat-share-card">
+                    {msg.sharePreview.imageUrl && (
+                      <img src={msg.sharePreview.imageUrl} alt="" className="chat-share-card-img" />
+                    )}
+                    <div className="chat-share-card-body">
+                      <span className="chat-share-card-label">📷 Post</span>
+                      <span className="chat-share-card-author">{msg.sharePreview.authorName}</span>
+                      {msg.sharePreview.caption && <span className="chat-share-card-caption">{msg.sharePreview.caption}</span>}
+                    </div>
+                  </a>
                 ) : (
                   <p>{msg.text}</p>
                 )}

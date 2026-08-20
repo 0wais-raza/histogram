@@ -1,7 +1,7 @@
 import {
   Bold, Italic, Underline, Strikethrough, Code,
   Heading1, Heading2, Heading3, Quote, List,
-  EyeOff, Minus,
+  EyeOff, Minus, Link,
 } from "lucide-react";
 
 /**
@@ -85,6 +85,8 @@ export default function RichTextToolbar({ textareaRef, value, onChange }) {
     { icon: List, title: "List (- text)", action: () => insertLine("- ") },
     { icon: EyeOff, title: "Spoiler (||text||)", action: () => wrap("||", "||") },
     { icon: Minus, title: "Divider", action: () => insertAtCursor("\n---\n") },
+    { type: "divider" },
+    { icon: Link, title: "Link ([text](url))", action: () => wrap("[", "](https://)") },
   ];
 
   return (

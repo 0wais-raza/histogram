@@ -56,6 +56,11 @@ function processInline(text) {
   // Spoiler ||...||
   result = result.replace(/\|\|(.+?)\|\|/g, '<span class="format-spoiler" title="Click to reveal">$1</span>');
 
+  // Auto-link URLs (but not inside already-processed tags)
+  result = result.replace(/(\s|^)(https?:\/\/[^\s<]+)/g, (match, pre, url) => {
+    return `${pre}<a href="${url}" target="_blank" rel="noopener noreferrer" class="format-link">${url}</a>`;
+  });
+
   return result;
 }
 

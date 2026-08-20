@@ -58,7 +58,7 @@ function cropImageFile(file, cropData, aspectKey) {
       const natPerVpY = (img.naturalHeight / imgRenderH) / scale;
 
       // Fixed ratio 4:5 — match CSS .crop-frame-portrait dimensions
-      const frameH = Math.min(vpH * 0.65, vpW * 0.8 * ratio);
+      const frameH = Math.min(vpH * 0.55, 400);
       const frameW = frameH * ratio;
 
       // Crop frame center in viewport
@@ -164,9 +164,8 @@ export default function CreatePost() {
       .catch(() => {});
   }, []);
 
-  // Lock body scroll
+  // Allow scroll on create post page
   useEffect(() => {
-    document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
 

@@ -34,7 +34,7 @@ export default function PostDetail() {
   const musicMap = useRef({});
 
   useEffect(() => {
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = "auto";
     return () => { document.body.style.overflow = ""; };
   }, []);
 
@@ -166,7 +166,10 @@ export default function PostDetail() {
     <div className="page page-enter" style={{ maxWidth: 600, margin: "0 auto" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-        <button className="btn icon-only" onClick={() => navigate(-1)}>
+        <button className="btn icon-only" onClick={() => {
+          if (window.history.length > 1) navigate(-1);
+          else navigate("/home");
+        }}>
           <ArrowLeft size={20} />
         </button>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Post</h2>

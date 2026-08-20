@@ -255,7 +255,15 @@ export default function Home() {
   async function sendPostToChat(contact) {
     if (!sharePost || !contact) return;
     const postUrl = `${window.location.origin}/post/${sharePost.id}`;
-    const shareText = postUrl;
+    const shareText = `📷 ${sharePost.authorName} shared a post`;
+    const sharePreview = {
+      type: "post_share",
+      postId: sharePost.id,
+      postUrl,
+      authorName: sharePost.authorName || "",
+      caption: (sharePost.caption || "").slice(0, 150),
+      imageUrl: sharePost.imageUrl || (sharePost.imageUrls && sharePost.imageUrls[0]) || "",
+    };
 
     setSentTo(contact.uid);
     try {
@@ -273,7 +281,7 @@ export default function Home() {
         batch.set(doc(db, "users", contact.uid, "chatThreads", chatId), { lastMessage: shareText, lastMessageAt: serverTimestamp(), unreadCount: increment(1) }, { merge: true });
       }
       await batch.commit();
-      await addDoc(collection(db, "chats", chatId, "messages"), { senderId: user.uid, text: shareText, isGif: false, gifUrl: "", createdAt: serverTimestamp(), read: false });
+      await addDoc(collection(db, "chats", chatId, "messages"), { senderId: user.uid, text: shareText, isGif: false, gifUrl: "", sharePreview, createdAt: serverTimestamp(), read: false });
 
       // Show sent confirmation then close
       setTimeout(() => {

@@ -1123,6 +1123,18 @@ body.modal-open {
   color: var(--text-secondary);
 }
 
+.formatted-text .format-link {
+  color: var(--cyan);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(71, 191, 255, 0.3);
+  transition: all 0.15s;
+}
+
+.formatted-text .format-link:hover {
+  color: var(--neon-purple);
+  border-bottom-color: var(--neon-purple);
+}
+
 /* ════════════════════════════════════════
    Error
    ════════════════════════════════════════ */
@@ -1134,6 +1146,52 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* ════════════════════════════════════════
+   Scroll to Top Button
+   ════════════════════════════════════════ */
+
+.scroll-to-top-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-heavy);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 40;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: all 0.2s var(--ease-out);
+  animation: fadeIn 0.2s var(--ease-out);
+}
+
+.scroll-to-top-btn:hover {
+  background: rgba(134, 59, 255, 0.2);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(134, 59, 255, 0.25);
+}
+
+.scroll-to-top-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+  .scroll-to-top-btn {
+    bottom: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+  }
 }
 
 /* ════════════════════════════════════════
