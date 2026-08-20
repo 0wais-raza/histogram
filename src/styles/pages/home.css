@@ -311,7 +311,8 @@
   padding-top: 10px;
 }
 
-.inline-comments-form input {
+.inline-comments-form input,
+.inline-comment-textarea {
   flex: 1;
   padding: 8px 12px;
   border: 1px solid var(--glass-border);
@@ -321,14 +322,21 @@
   font-size: 13px;
   font-family: inherit;
   transition: border-color 0.2s;
+  resize: none;
+  overflow: hidden;
+  min-height: 34px;
+  max-height: 120px;
+  line-height: 1.4;
 }
 
-.inline-comments-form input:focus {
+.inline-comments-form input:focus,
+.inline-comment-textarea:focus {
   outline: none;
   border-color: var(--accent);
 }
 
-.inline-comments-form input::placeholder {
+.inline-comments-form input::placeholder,
+.inline-comment-textarea::placeholder {
   color: var(--muted);
 }
 

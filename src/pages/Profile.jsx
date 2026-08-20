@@ -9,6 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import EditProfile from "../components/EditProfile";
 import InlineComments from "../components/InlineComments";
+import FormattedText from "../components/FormattedText";
 import {
   ImageIcon, Trash2, UserPlus, UserMinus, Heart,
   MessageCircle, Bookmark, X, Music, Volume2, VolumeX,
@@ -282,7 +283,7 @@ export default function Profile() {
               ) : null}
 
               {selectedPost.caption && (
-                <p className="feed-post-caption" style={{ padding: "12px 16px" }}>{selectedPost.caption}</p>
+                <div className="feed-post-caption" style={{ padding: "12px 16px" }}><FormattedText text={selectedPost.caption} /></div>
               )}
 
               {selectedPost.musicName && (

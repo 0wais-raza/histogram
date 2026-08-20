@@ -7,6 +7,8 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { alertError } from "../utils/alerts";
 import { Send, Trash2, Heart, Image } from "lucide-react";
+import FormattedText from "./FormattedText";
+import RichTextToolbar from "./RichTextToolbar";
 
 export default function InlineComments({ post }) {
   const { user } = useAuth();
@@ -190,7 +192,7 @@ export default function InlineComments({ post }) {
                 {c.isGif && c.gifUrl ? (
                   <img src={c.gifUrl} alt="GIF" className="comment-gif" />
                 ) : c.text ? (
-                  <p className="comment-text">{c.text}</p>
+                  <FormattedText text={c.text} className="comment-text" />
                 ) : null}
                 <div className="comment-actions">
                   <button
@@ -226,6 +228,7 @@ export default function InlineComments({ post }) {
         </div>
       )}
 
+      <RichTextToolbar textareaRef={inputRef} value={text} onChange={setText} />
       <form className="inline-comments-form" onSubmit={handleSend}>
         <button
           type="button"
@@ -235,12 +238,13 @@ export default function InlineComments({ post }) {
         >
           <Image size={16} />
         </button>
-        <input
+        <textarea
           ref={inputRef}
-          type="text"
-          placeholder="Write a comment..."
+          placeholder="Write a comment... (supports **bold**, *italic*)"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          rows={1}
+          className="inline-comment-textarea"
         />
         <button
           type="submit"

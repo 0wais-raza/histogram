@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import { Bookmark } from "lucide-react";
 import { FeedSkeleton } from "../components/LoadingSkeleton";
+import FormattedText from "../components/FormattedText";
 
 export default function Saved() {
   const { user } = useAuth();
@@ -93,7 +94,7 @@ export default function Saved() {
             return (
               <div key={post.id} className="feed-post">
                 {images.length > 0 && <img src={images[0]} alt="" className="feed-post-image" />}
-                {post.caption && <p className="feed-post-caption">{post.caption}</p>}
+                {post.caption && <div className="feed-post-caption"><FormattedText text={post.caption} /></div>}
                 <Link
                   to={`/profile/${post.authorId}`}
                   className="saved-post-author-link"

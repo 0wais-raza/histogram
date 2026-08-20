@@ -14,6 +14,7 @@ import {
   ImagePlus, X, Send, ChevronLeft, ChevronRight, Music,
   Volume2, VolumeX, Crop, Scissors, ArrowLeft, Check, ZoomIn, ZoomOut, Play, Pause,
 } from "lucide-react";
+import RichTextToolbar from "../components/RichTextToolbar";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
@@ -137,6 +138,7 @@ export default function CreatePost() {
   const trimAudioRef = useRef(null);
 
   const fileRef = useRef(null);
+  const captionRef = useRef(null);
 
   // Load music from manifest
   useEffect(() => {
@@ -517,7 +519,8 @@ export default function CreatePost() {
 
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple onChange={handleFileChange} style={{ display: "none" }} />
 
-        <textarea className="create-post-caption" placeholder="Write a caption..." rows={4} maxLength={2200} value={caption} onChange={(e) => setCaption(e.target.value)} />
+        <RichTextToolbar textareaRef={captionRef} value={caption} onChange={setCaption} />
+        <textarea ref={captionRef} className="create-post-caption" placeholder="Write a caption... (supports **bold**, *italic*, and more)" rows={4} maxLength={2200} value={caption} onChange={(e) => setCaption(e.target.value)} />
         <p className="create-post-count">{caption.length}/2200</p>
 
         <div className="create-post-music-section">

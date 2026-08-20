@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import SetupProfile from "../components/SetupProfile";
 import InlineComments from "../components/InlineComments";
+import FormattedText from "../components/FormattedText";
 import { FeedSkeleton } from "../components/LoadingSkeleton";
 import { staticPosts } from "../config/posts";
 import {
@@ -391,7 +392,7 @@ export default function Home() {
                   </div>
                 )}
 
-                {post.caption && <p className="feed-post-caption">{post.caption}</p>}
+                {post.caption && <div className="feed-post-caption"><FormattedText text={post.caption} /></div>}
 
                 {post.musicName && (
                   <div className="feed-post-music">
