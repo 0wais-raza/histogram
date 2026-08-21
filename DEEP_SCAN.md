@@ -124,13 +124,13 @@ All are non-critical. Most common:
 - **XSS Protection:** `formatText.js` escapes HTML before applying markdown. The `dangerouslySetInnerHTML` in `FormattedText.jsx` is safe because all input is escaped first.
 - **Auth guards:** `ProtectedRoute` component correctly wraps all authenticated routes.
 - **Username validation:** ENFORCED both client-side (regex) and server-side (Firestore `usernames` collection + transaction).
-- **Image upload:** Uses third-party imgbb API with API key from env. File type and size validated client-side.
+- **Image upload:** Uses third-party Cloudinary unsigned upload API. File type and size validated client-side.
 - **Firestore rules:** All collections have appropriate `allow read/write` rules after our fixes.
 
 ### ⚠️ Minor Concerns
 - **Client-side counters:** `followersCount`, `followingCount`, `likesCount`, `commentsCount` are all maintained client-side via `increment()`. A malicious user could call `increment(1000)` to inflate counts. **Mitigation:** These are social features, not financial — the `diff().hasOnly()` rule limits which fields can be changed, which is reasonable.
 - **`searchPage.jsx` fetches all users** (`where("username", "!=", "")`) — this is fine for small apps but won't scale.
-- **API Key exposure:** `VITE_IMGBB_API_KEY` is in the client bundle (Vite env vars are public). This is expected for imgbb (free tier, rate-limited) but worth noting.
+- **API Key exposure:** `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET` are in the client bundle (Vite env vars are public). This is expected for Cloudinary unsigned uploads (free tier, rate-limited) but worth noting.
 
 ---
 
