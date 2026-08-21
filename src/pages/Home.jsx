@@ -308,8 +308,14 @@ export default function Home() {
       const chatId = [user.uid, contact.uid].sort().join("_");
       const batch = writeBatch(db);
       const chatRef = doc(db, "chats", chatId);
-      const chatSnap = await getDoc(chatRef);
-      if (!chatSnap.exists()) {
+      let chatExists = false;
+      try {
+        const chatSnap = await getDoc(chatRef);
+        chatExists = chatSnap.exists();
+      } catch {
+        chatExists = false;
+      }
+      if (!chatExists) {
         batch.set(chatRef, { participants: [user.uid, contact.uid], lastMessage: shareText, lastMessageAt: serverTimestamp(), typing: {} });
         batch.set(doc(db, "users", user.uid, "chatThreads", chatId), { chatId, otherUser: contact.uid, lastMessageAt: serverTimestamp(), lastMessage: shareText, unreadCount: 0 });
         batch.set(doc(db, "users", contact.uid, "chatThreads", chatId), { chatId, otherUser: user.uid, lastMessageAt: serverTimestamp(), lastMessage: shareText, unreadCount: 1 });

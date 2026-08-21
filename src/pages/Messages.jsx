@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import {
-  collection, query, limit, getDocs, doc, getDoc,
+  collection, query, limit, getDocs, doc, getDoc, setDoc,
   addDoc, orderBy, onSnapshot, serverTimestamp, writeBatch, updateDoc,
   where, increment,
 } from "firebase/firestore";
@@ -220,28 +220,43 @@ export default function Messages() {
     loadUsers();
   }, [user]);
 
-  // Real-time messages when chat is active
+  // Ensure chat doc exists + Real-time messages when chat is active
   useEffect(() => {
     if (!activeChat || !user) return;
     setChatMessages([]);
     setPendingIds(new Set());
     setFailedIds(new Set());
     const chatId = [user.uid, activeChat.uid].sort().join("_");
-    const q = query(
-      collection(db, "chats", chatId, "messages"),
-      orderBy("createdAt", "asc"),
-      limit(200)
-    );
+    const chatRef = doc(db, "chats", chatId);
+    let unsub = null;
+    let cancelled = false;
 
-    const unsub = onSnapshot(q, (snap) => {
-      const msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setChatMessages(msgs);
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-    }, (err) => {
-      console.error("Messages listener error:", err);
-    });
+    // Create chat doc first so the get() in messages security rules can succeed
+    setDoc(chatRef, {
+      participants: [user.uid, activeChat.uid],
+      typing: {},
+    }, { merge: true })
+      .then(() => {
+        if (cancelled) return;
+        const q = query(
+          collection(db, "chats", chatId, "messages"),
+          orderBy("createdAt", "asc"),
+          limit(200)
+        );
+        unsub = onSnapshot(q, (snap) => {
+          const msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setChatMessages(msgs);
+          setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        }, (err) => {
+          console.error("Messages listener error:", err);
+        });
+      })
+      .catch(() => {});
 
-    return unsub;
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, [activeChat?.uid, user]);
 
   // Mark messages as read when opening chat + mark other user's messages as read (blue tick)
@@ -380,8 +395,15 @@ export default function Messages() {
       const batch = writeBatch(db);
 
       const chatRef = doc(db, "chats", chatId);
-      const chatSnap = await getDoc(chatRef);
-      if (!chatSnap.exists()) {
+      let chatExists = false;
+      try {
+        const chatSnap = await getDoc(chatRef);
+        chatExists = chatSnap.exists();
+      } catch {
+        chatExists = false;
+      }
+
+      if (!chatExists) {
         batch.set(chatRef, {
           participants: [user.uid, activeChat.uid],
           lastMessage: text || "GIF",
@@ -453,8 +475,14 @@ export default function Messages() {
       const chatId = [user.uid, activeChat.uid].sort().join("_");
       const batch = writeBatch(db);
       const chatRef = doc(db, "chats", chatId);
-      const chatSnap = await getDoc(chatRef);
-      if (!chatSnap.exists()) {
+      let chatExists = false;
+      try {
+        const chatSnap = await getDoc(chatRef);
+        chatExists = chatSnap.exists();
+      } catch {
+        chatExists = false;
+      }
+      if (!chatExists) {
         batch.set(chatRef, { participants: [user.uid, activeChat.uid], lastMessage: text || "GIF", lastMessageAt: serverTimestamp(), typing: {} });
         batch.set(doc(db, "users", user.uid, "chatThreads", chatId), { chatId, otherUser: activeChat.uid, lastMessageAt: serverTimestamp(), lastMessage: text || "GIF", unreadCount: 0 });
         batch.set(doc(db, "users", activeChat.uid, "chatThreads", chatId), { chatId, otherUser: user.uid, lastMessageAt: serverTimestamp(), lastMessage: text || "GIF", unreadCount: 1 });
