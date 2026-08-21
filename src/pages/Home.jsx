@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   doc, getDoc, collection, query, orderBy, limit,
@@ -611,7 +612,7 @@ export default function Home() {
       )}
 
       {/* ── Instagram-style Share Sheet ── */}
-      {sharePost && (
+      {sharePost && createPortal(
         <div className="modal-backdrop" onClick={() => { setSharePost(null); setShareContacts([]); }}>
           <div className="modal share-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="share-sheet-header">
@@ -678,7 +679,8 @@ export default function Home() {
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

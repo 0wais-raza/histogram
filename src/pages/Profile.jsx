@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
 import {
   doc, query, collection, where, orderBy,
@@ -267,7 +268,7 @@ export default function Profile() {
       </div>
 
       {/* Post Detail Modal — Instagram-style */}
-      {selectedPost && (
+      {selectedPost && createPortal(
         <div className="modal-backdrop" onClick={() => setSelectedPost(null)}>
           <div className="modal post-detail-modal" onClick={(e) => e.stopPropagation()}>
             <div className="create-post-header" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
@@ -332,7 +333,8 @@ export default function Profile() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

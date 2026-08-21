@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { doc, updateDoc } from "firebase/firestore";
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { db } from "../firebase/config";
@@ -151,7 +152,7 @@ export default function EditProfile({ profile, onClose, onSaved }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <form
         className="modal edit-profile-modal"
@@ -318,6 +319,7 @@ export default function EditProfile({ profile, onClose, onSaved }) {
           </>
         )}
       </form>
-    </div>
+    </div>,
+    document.body
   );
 }
