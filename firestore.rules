@@ -2,83 +2,163 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ════════════════════════════════════════
     // Users collection
+    // ════════════════════════════════════════
     match /users/{uid} {
+      // Anyone authenticated can read user profiles
       allow read: if request.auth != null;
+      // Only the user can create/update/delete their own profile
       allow create: if request.auth != null && request.auth.uid == uid;
       allow update: if request.auth != null && request.auth.uid == uid;
       allow delete: if request.auth != null && request.auth.uid == uid;
 
-      // Chat threads subcollection
+      // Chat threads subcollection — only participants can read/write
       match /chatThreads/{threadId} {
         allow read: if request.auth != null;
-        allow write: if request.auth != null;
+        // Only the thread owner (this uid) can write
+        allow write: if request.auth != null && request.auth.uid == uid;
       }
     }
 
+    // ════════════════════════════════════════
     // Usernames collection
+    // ════════════════════════════════════════
     match /usernames/{username} {
+      // Anyone can read (needed for login resolution)
       allow read: if true;
+      // Only create allowed (claim a new username)
+      // No updates or deletes by clients — handled by transaction
       allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow update: if false;
+      allow delete: if false;
     }
 
+    // ════════════════════════════════════════
     // Follows collection
+    // ════════════════════════════════════════
     match /follows/{followId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
+      // followId format: "{followerId}_{followingId}"
+      // Only the follower can create/delete the follow relationship
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.followerId;
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.followerId;
+      // No updates allowed on follow docs
+      allow update: if false;
     }
 
+    // ════════════════════════════════════════
     // Posts collection
+    // ════════════════════════════════════════
     match /posts/{postId} {
+      // Anyone authenticated can read posts
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
-    }
+      // Only the author can create a post
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.authorId;
+      // Only the author can update their own post
+      // (caption edits, etc. — NOT like/comment counts via direct write)
+      allow update: if request.auth != null
+                    && request.auth.uid == resource.data.authorId;
+      // Only the author can delete their own post
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.authorId;
 
-    // Post likes
-    match /postLikes/{likeId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
-    }
-
-    // Post saves
-    match /postSaves/{saveId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
-    }
-
-    // Comments subcollection under posts
-    match /posts/{postId}/comments/{commentId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
-    }
-
-    // Comment likes
-    match /commentLikes/{likeId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
-    }
-
-    // Chat messages subcollection
-    match /chats/{chatId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-
-      match /messages/{messageId} {
+      // Comments subcollection — anyone authenticated can read/create,
+      // only comment author can delete
+      match /comments/{commentId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null;
-        allow update: if request.auth != null;
+        // Comment author can delete, OR the post author can delete
+        allow delete: if request.auth != null
+                      && (request.auth.uid == resource.data.authorId
+                          || get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid);
+        // No direct updates — likesCount is managed via transactions
+        allow update: if false;
       }
+    }
+
+    // ════════════════════════════════════════
+    // Post Likes
+    // ════════════════════════════════════════
+    match /postLikes/{likeId} {
+      allow read: if request.auth != null;
+      // likeId format: "{userId}_{postId}"
+      // Only the liker can create/delete their own like
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.userId;
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.userId;
+      allow update: if false;
+    }
+
+    // ════════════════════════════════════════
+    // Post Saves (Bookmarks)
+    // ════════════════════════════════════════
+    match /postSaves/{saveId} {
+      allow read: if request.auth != null;
+      // saveId format: "{userId}_{postId}"
+      // Only the saver can create/delete their own save
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.userId;
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.userId;
+      allow update: if false;
+    }
+
+    // ════════════════════════════════════════
+    // Comment Likes
+    // ════════════════════════════════════════
+    match /commentLikes/{likeId} {
+      allow read: if request.auth != null;
+      // likeId format: "{userId}_{commentId}"
+      // Only the liker can create/delete their own like
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.userId;
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.userId;
+      allow update: if false;
+    }
+
+    // ════════════════════════════════════════
+    // Chats
+    // ════════════════════════════════════════
+    match /chats/{chatId} {
+      // chatId format: "{uid1}_{uid2}" (sorted)
+      // Only participants can read chat metadata
+      allow read: if request.auth != null
+                  && request.auth.uid in resource.data.participants;
+      // Create: only participants can create
+      allow create: if request.auth != null
+                    && request.auth.uid in request.resource.data.participants;
+      // Update: only participants (for typing indicators, lastMessage, etc.)
+      allow update: if request.auth != null
+                    && request.auth.uid in resource.data.participants;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Only participants can read messages
+        allow read: if request.auth != null
+                    && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        // Only participants can send messages
+        allow create: if request.auth != null
+                      && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        // Only participants can update (read receipts)
+        allow update: if request.auth != null
+                      && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+    }
+
+    // ════════════════════════════════════════
+    // User Status (online/offline presence)
+    // ════════════════════════════════════════
+    match /userStatus/{uid} {
+      // Anyone authenticated can read presence (for chat active status)
+      allow read: if request.auth != null;
+      // Only the user can update their own status
+      allow write: if request.auth != null && request.auth.uid == uid;
     }
   }
 }
