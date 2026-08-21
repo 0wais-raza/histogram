@@ -1380,6 +1380,15 @@
     max-height: 100vh;
     border-radius: 0;
   }
+
+  /* Hide mobile bar + remove padding when chat is open */
+  body.chat-active .mobile-bar {
+    display: none !important;
+  }
+
+  body.chat-active .app-main {
+    padding-bottom: 0 !important;
+  }
 }
 
 /* ════════════════════════════════════════

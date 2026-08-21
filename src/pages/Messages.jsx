@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import {
   collection, query, limit, getDocs, doc, getDoc,
@@ -302,14 +303,19 @@ export default function Messages() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages.length]);
 
-  // Lock scroll when chat open
+  // Lock scroll when chat open + hide mobile bar
   useEffect(() => {
     if (activeChat) {
       document.body.style.overflow = "hidden";
+      document.body.classList.add("chat-active");
     } else {
       document.body.style.overflow = "";
+      document.body.classList.remove("chat-active");
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+      document.body.classList.remove("chat-active");
+    };
   }, [activeChat]);
 
   // Typing indicator handler
@@ -493,8 +499,8 @@ export default function Messages() {
 
   // ── Chat View ──
   if (activeChat) {
-    return (
-      <div className="chat-view">          <div className="chat-header">
+    return createPortal(
+      <div className="chat-view"><div className="chat-header">
           <button className="btn icon-only" onClick={() => setActiveChat(null)}>
             <ArrowLeft size={20} />
           </button>
@@ -606,7 +612,8 @@ export default function Messages() {
             <Send size={18} />
           </button>
         </form>
-      </div>
+      </div>,
+      document.body
     );
   }
 
