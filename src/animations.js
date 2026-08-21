@@ -153,6 +153,7 @@ export function useMicroInteractions() {
   useEffect(() => {
     // Like button spring animation
     const handleLikeClick = (e) => {
+      if (!e.target.closest) return;
       const btn = e.target.closest('.feed-post-action-btn');
       if (!btn) return;
       const icon = btn.querySelector('svg');
@@ -163,12 +164,14 @@ export function useMicroInteractions() {
 
     // Card hover lift
     const handleCardHover = (e) => {
+      if (!e.target.closest) return;
       const card = e.target.closest('.feed-post, .grid-item-wrapper, .settings-item');
       if (!card) return;
       gsap.to(card, { y: -2, duration: 0.2, ease: 'power2.out' });
     };
 
     const handleCardLeave = (e) => {
+      if (!e.target.closest) return;
       const card = e.target.closest('.feed-post, .grid-item-wrapper, .settings-item');
       if (!card) return;
       gsap.to(card, { y: 0, duration: 0.3, ease: 'power2.out' });

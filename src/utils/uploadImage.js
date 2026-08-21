@@ -38,7 +38,19 @@ export async function uploadImage(file) {
   }
 
   if (!res.ok) {
-    throw new Error(`Upload failed (server error ${res.status}). Please try again.`);
+    // Try to parse error body for more detail
+    let detail = "";
+    try {
+      const errBody = await res.json();
+      detail = errBody?.error?.message || "";
+    } catch {}
+    if (res.status === 400 && (detail.includes("Invalid API key") || detail.includes("UNAUTHORIZED"))) {
+      throw new Error("Image upload API key is invalid. Get a free key at https://imgbb.com/api and set VITE_IMGBB_API_KEY in your .env file.");
+    }
+    if (res.status === 400 && detail.includes("too large")) {
+      throw new Error("Image is too large. Please use a smaller file (max 10 MB).");
+    }
+    throw new Error(detail || `Upload failed (server error ${res.status}). Please check your API key and try again.`);
   }
 
   let data;
