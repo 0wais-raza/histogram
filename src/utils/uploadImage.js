@@ -13,8 +13,8 @@
  * @returns {Promise<string>} The hosted image URL
  */
 export async function uploadImage(file) {
-  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME?.trim();
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET?.trim();
 
   if (!cloudName || !uploadPreset) {
     throw new Error(
