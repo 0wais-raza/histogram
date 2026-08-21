@@ -129,12 +129,8 @@
 }
 
 .grid-item:hover {
-  border-color: rgba(255,255,255,0.1);
-  transform: scale(1.02);
-}
-
-.grid-item:hover {
   border-color: var(--border-glow);
+  transform: scale(1.02);
 }
 
 .grid-item-overlay {

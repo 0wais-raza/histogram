@@ -102,6 +102,45 @@ export default function Notifications() {
         }
       } catch {}
 
+      // ── Comments on YOUR posts ──
+      try {
+        const myPostsQ2 = query(
+          collection(db, "posts"),
+          where("authorId", "==", user.uid),
+          orderBy("createdAt", "desc"),
+          limit(10)
+        );
+        const myPostsSnap2 = await getDocs(myPostsQ2);
+        for (const pDoc of myPostsSnap2.docs) {
+          const commentsQ = query(
+            collection(db, "posts", pDoc.id, "comments"),
+            orderBy("createdAt", "desc"),
+            limit(5)
+          );
+          const commentsSnap = await getDocs(commentsQ);
+          for (const cDoc of commentsSnap.docs) {
+            const cData = cDoc.data();
+            if (cData.authorId === user.uid) continue;
+            try {
+              const commenterSnap = await getDoc(doc(db, "users", cData.authorId));
+              if (commenterSnap.exists()) {
+                const u = commenterSnap.data();
+                notifs.push({
+                  id: "comment_" + cDoc.id,
+                  type: "comment",
+                  userId: cData.authorId,
+                  username: u.username,
+                  profilePic: u.profilePic,
+                  createdAt: cData.createdAt,
+                  text: "commented on your post",
+                  postId: pDoc.id,
+                });
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+
       // Also check posts from people we follow (for general activity)
       const followingQ = query(
         collection(db, "follows"),
@@ -180,7 +219,7 @@ export default function Notifications() {
           {notifications.map((n) => (
             <Link
               key={n.id}
-              to={n.type === "like" ? "/post/" + n.postId : n.type === "new_post" ? "/post/" + n.postId : "/profile/" + n.userId}
+              to={(n.type === "like" || n.type === "comment" || n.type === "new_post") ? "/post/" + n.postId : "/profile/" + n.userId}
               className="notification-item"
             >
               {n.profilePic ? (

@@ -9,27 +9,11 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { usePageAnimations } from "../animations";
 import {
-  MessageCircle, Send, Search, ArrowLeft, Image, Smile,
+  MessageCircle, Send, Search, ArrowLeft,
   CheckCheck, Check, Wifi, WifiOff,
 } from "lucide-react";
 import { MessagesSkeleton } from "../components/LoadingSkeleton";
 import { alertError } from "../utils/alerts";
-
-// Working GIF URLs (static Tenor CDN links)
-const WORKING_GIFS = [
-  { url: "https://media.tenor.com/iMlPK0MXgqYAAAAM/wave-hello.gif", label: "Wave" },
-  { url: "https://media.tenor.com/1NixIQ8tzCsAAAAM/thumbs-up-thumbsup.gif", label: "Thumbs Up" },
-  { url: "https://media.tenor.com/JJmHyMpMFJsAAAAM/love-you-heart.gif", label: "Love" },
-  { url: "https://media.tenor.com/Z1JgEOBMkjEAAAAM/fire-fire-emoji.gif", label: "Fire" },
-  { url: "https://media.tenor.com/TKktnMmkz5YAAAAM/laughing-lol.gif", label: "LOL" },
-  { url: "https://media.tenor.com/FfI0cMNYXr4AAAAM/clapping-clap.gif", label: "Clap" },
-  { url: "https://media.tenor.com/l4HHZah5B68AAAAM/sad-crying.gif", label: "Cry" },
-  { url: "https://media.tenor.com/VtIL5kMHEHcAAAAM/party-popper.gif", label: "Party" },
-  { url: "https://media.tenor.com/Ck4NjbMRo24AAAAM/hi-hello.gif", label: "Hi" },
-  { url: "https://media.tenor.com/nRlFnIvqPDAAAAAM/ok-spongebob.gif", label: "OK" },
-  { url: "https://media.tenor.com/WWJbMKuaK-sAAAAM/emoji-flower.gif", label: "Flower" },
-  { url: "https://media.tenor.com/yFpSbBaWqLUAAAAM/kiss-heart.gif", label: "Kiss" },
-];
 
 function timeAgo(ts) {
   if (!ts?.seconds) return "";
@@ -64,7 +48,6 @@ export default function Messages() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [showGifs, setShowGifs] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [unreadCounts, setUnreadCounts] = useState({});
   const [networkOnline, setNetworkOnline] = useState(navigator.onLine);
@@ -270,7 +253,7 @@ export default function Messages() {
     return unsub;
   }, [activeChat?.uid, user]);
 
-  // Mark messages as read when opening chat
+  // Mark messages as read when opening chat + mark other user's messages as read (blue tick)
   useEffect(() => {
     if (!activeChat || !user) return;
     const chatId = [user.uid, activeChat.uid].sort().join("_");
@@ -282,7 +265,36 @@ export default function Messages() {
       }
     }).catch(() => {});
 
+    // Mark all unread messages from the other user as read (blue tick)
+    const msgsRef = collection(db, "chats", chatId, "messages");
+    const unreadQ = query(msgsRef, where("senderId", "==", activeChat.uid), where("read", "==", false));
+    getDocs(unreadQ).then((snap) => {
+      snap.docs.forEach((d) => {
+        updateDoc(d.ref, { read: true }).catch(() => {});
+      });
+    }).catch(() => {});
+
     setUnreadCounts((prev) => ({ ...prev, [chatId]: 0 }));
+  }, [activeChat?.uid, user]);
+
+  // Real-time active status for the other user
+  const [otherUserActive, setOtherUserActive] = useState(false);
+  useEffect(() => {
+    if (!activeChat || !user) return;
+    const statusRef = doc(db, "userStatus", activeChat.uid);
+    const unsub = onSnapshot(statusRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const isOnline = data.online === true;
+        const lastSeen = data.lastSeen?.seconds || 0;
+        const diff = Date.now() - lastSeen * 1000;
+        // Consider active if online and last seen within 2 minutes
+        setOtherUserActive(isOnline && diff < 120000);
+      } else {
+        setOtherUserActive(false);
+      }
+    }, () => {});
+    return unsub;
   }, [activeChat?.uid, user]);
 
   // Scroll to bottom on new messages
@@ -364,7 +376,6 @@ export default function Messages() {
     setChatMessages((prev) => [...prev, optimisticMsg]);
     setPendingIds((prev) => new Set([...prev, tempId]));
     setChatInput("");
-    setShowGifs(false);
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
     try {
@@ -501,8 +512,10 @@ export default function Messages() {
                 <span className="chat-typing-indicator">
                   <span className="typing-dots"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></span>
                 </span>
+              ) : otherUserActive ? (
+                <span className="chat-header-status chat-header-online">Active now</span>
               ) : (
-                <span className="chat-header-status">Active now</span>
+                <span className="chat-header-status">Offline</span>
               )}
             </div>
           </Link>
@@ -572,19 +585,6 @@ export default function Messages() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* GIF Picker */}
-        {showGifs && (
-          <div className="chat-gif-picker">
-            <div className="chat-gif-grid">
-              {WORKING_GIFS.map((gif, i) => (
-                <button key={i} className="chat-gif-item" onClick={() => sendMessage(gif.url, true)}>
-                  <img src={gif.url} alt={gif.label} loading="lazy" />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Network warning */}
         {!networkOnline && (
           <div className="chat-offline-bar">
@@ -593,9 +593,6 @@ export default function Messages() {
         )}
 
         <form className="chat-input-bar" onSubmit={handleSend}>
-          <button type="button" className="chat-gif-btn" onClick={() => setShowGifs(!showGifs)}>
-            <Image size={20} />
-          </button>
           <input
             ref={chatInputRef}
             type="text"

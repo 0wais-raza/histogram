@@ -121,6 +121,10 @@ export default function Landing() {
           </div>
         </div>
       </div>
+
+      <footer className="site-footer" style={{ position: "absolute", bottom: 0, width: "100%" }}>
+        <span>Made by <a href="https://github.com/0wais-raza" target="_blank" rel="noopener noreferrer">@owais-raza</a></span>
+      </footer>
     </div>
   );
 }

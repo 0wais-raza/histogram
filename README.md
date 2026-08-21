@@ -1,20 +1,39 @@
-# **Copy karne valon abhi incomplete hai!!**
+<div align="center">
 
+  <img src="public/histogram.png" alt="Histograam Logo" width="120" height="120" />
 
+  # Histograam
 
-# React + Vite
+  **A Feature-Rich Instagram Clone**
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+  A modern, fully functional social media web application built with **React** and **Firebase**, replicating key Instagram features including real-time messaging, multimedia posts, audio sharing, and authentication.
 
-Currently, two official plugins are available:
+</div>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 🌟 Key Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+* **🔐 Authentication**
+  * Email & Password Sign Up / Login
+  * Quick Sign Up & Login with Google
+* **📸 Posts & Media**
+  * Create, share, and view posts
+  * Support for image and audio media formats
+* **💬 Real-Time Direct Messaging**
+  * Chat with other users in real-time
+  * Send and share posts directly via messages
+* **🚀 Responsive Design**
+  * Clean UI designed for optimal viewing across various devices
 
-## Expanding the Oxlint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## 🛠️ Tech Stack
+
+* **Frontend:** [React](https://reactjs.org/)
+* **Backend / Database:** [Firebase](https://firebase.google.com/)
+  * Firebase Authentication (Email/Password & Google Sign-In)
+  * Firestore Database (Real-time data & messaging)
+  * Firebase Storage (Images & audio files)
+
+---

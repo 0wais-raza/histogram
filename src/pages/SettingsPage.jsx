@@ -356,7 +356,7 @@ export default function SettingsPage() {
           <div className="settings-info-card">
             <div className="settings-info-row">
               <span className="settings-info-label">Version</span>
-              <span className="settings-info-value">1.0.0</span>
+              <span className="settings-info-value">1.2.0</span>
             </div>
             <div className="settings-info-row">
               <span className="settings-info-label">Built with</span>
@@ -364,11 +364,14 @@ export default function SettingsPage() {
             </div>
             <div className="settings-info-row">
               <span className="settings-info-label">Theme</span>
-              <span className="settings-info-value">Liquid Glass Dark</span>
+              <span className="settings-info-value">Elegant Fast</span>
             </div>
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 16, textAlign: "center" }}>
             Instagram-inspired social media app with real-time features.
+          </p>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, textAlign: "center" }}>
+            Made by <a href="https://github.com/0wais-raza" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-bright)", textDecoration: "none" }}>Owais Raza</a>
           </p>
         </div>
       )}

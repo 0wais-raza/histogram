@@ -99,10 +99,12 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   background: #000;
+  height: 400px;
 }
 
 .cp-slider-track {
   display: flex;
+  height: 100%;
   transition: transform 0.3s ease;
 }
 
@@ -110,13 +112,14 @@
   min-width: 100%;
   flex-shrink: 0;
   position: relative;
+  height: 100%;
 }
 
 .cp-slide img {
   width: 100%;
-  max-height: 400px;
+  height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 /* ── Remove Button ── */
@@ -360,7 +363,7 @@
     min-height: calc(100vh - 64px - 64px);
   }
 
-  .cp-slide img {
-    max-height: 320px;
+  .cp-slider {
+    height: 320px;
   }
 }

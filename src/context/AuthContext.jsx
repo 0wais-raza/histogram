@@ -64,6 +64,37 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  // ── Presence tracking (online/offline status) ──
+  useEffect(() => {
+    if (!user) return;
+    const statusRef = doc(db, "userStatus", user.uid);
+
+    // Mark online
+    setDoc(statusRef, { online: true, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
+
+    // Mark offline on tab close / hide
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        setDoc(statusRef, { online: false, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
+      } else {
+        setDoc(statusRef, { online: true, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      setDoc(statusRef, { online: false, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      setDoc(statusRef, { online: false, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
+    };
+  }, [user]);
+
   /** Signup — email + password */
   async function signup(email, password) {
     const cred = await createUserWithEmailAndPassword(auth, email, password);

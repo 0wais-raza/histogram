@@ -47,6 +47,7 @@ export default function Home() {
   const [sharePost, setSharePost] = useState(null); // post being shared
   const [shareContacts, setShareContacts] = useState([]);
   const [shareLoading, setShareLoading] = useState(false);
+  const [tick, setTick] = useState(0); // forces timeAgo to re-render
   const lastTap = useRef({});
   const audioRefs = useRef({});
   const likeUnsubsRef = useRef(new Map());
@@ -54,6 +55,22 @@ export default function Home() {
   // ── GLOBAL SOUND STATE ──
   const [globalMuted, setGlobalMuted] = useState(true);
   const currentPlayingRef = useRef(null); // tracks which post audio is currently playing
+
+  // ── Refresh relative times every 60s ──
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── Lock body scroll when share sheet is open ──
+  useEffect(() => {
+    if (sharePost) {
+      document.body.classList.add("modal-open");
+    } else {
+      document.body.classList.remove("modal-open");
+    }
+    return () => document.body.classList.remove("modal-open");
+  }, [sharePost]);
 
   // ── Author data fetcher ──
   async function loadAuthorData(postList) {

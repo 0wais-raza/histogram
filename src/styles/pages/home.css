@@ -369,8 +369,8 @@
 .feed-post-image {
   width: 100%;
   display: block;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
+  object-fit: contain;
+  max-height: 600px;
 }
 
 /* ════════════════════════════════════════
@@ -393,13 +393,14 @@
 }
 
 .feed-post-slide .feed-post-image {
-  aspect-ratio: 4 / 5;
+  height: auto;
 }
 
-/* AD posts — cap height so tall portrait images don't take over */
+/* AD posts — show full image naturally */
 .feed-post-ad .feed-post-image {
   max-height: 500px;
-  object-fit: cover;
+  object-fit: contain;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 /* ── Slider controls ── */
@@ -1864,7 +1865,10 @@
   }
 
   .feed-post-image {
-    aspect-ratio: 4 / 5;
+    max-height: 500px;
+  }
+  .feed-post-slide .feed-post-image {
+    height: auto;
   }
 
   .feed-post-ad .feed-post-image {
@@ -2408,9 +2412,10 @@
 
 .chat-share-card-img {
   width: 100%;
-  aspect-ratio: 4 / 5;
+  max-height: 200px;
   object-fit: cover;
   display: block;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 .chat-share-card-body {
@@ -3310,7 +3315,23 @@
 .chat-header-status {
   display: block;
   font-size: 11px;
+  color: var(--muted);
+}
+
+.chat-header-online {
   color: var(--neon-green);
+}
+
+.chat-header-online::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  margin-right: 4px;
+  vertical-align: middle;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.5);
 }
 
 /* Typing dots animation — Instagram/WhatsApp style */

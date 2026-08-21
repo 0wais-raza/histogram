@@ -59,6 +59,9 @@ function AppRoutes() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </PageTransition>
+        <footer className="site-footer">
+          <span>Built by <a href="https://github.com/0wais-raza" target="_blank" rel="noopener noreferrer">@owais-raza</a></span>
+        </footer>
       </main>
     </div>
   );

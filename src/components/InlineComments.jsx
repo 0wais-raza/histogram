@@ -6,7 +6,7 @@ import {
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { alertError } from "../utils/alerts";
-import { Send, Trash2, Heart, Image } from "lucide-react";
+import { Send, Trash2, Heart } from "lucide-react";
 import FormattedText from "./FormattedText";
 import RichTextToolbar from "./RichTextToolbar";
 
@@ -18,7 +18,6 @@ export default function InlineComments({ post }) {
   const [authorPics, setAuthorPics] = useState({});
   const [likedComments, setLikedComments] = useState({});
   const [commentLikeCounts, setCommentLikeCounts] = useState({});
-  const [showGifPicker, setShowGifPicker] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const textRef = useRef(text);
@@ -112,30 +111,6 @@ export default function InlineComments({ post }) {
     }
   }
 
-  async function handleSendGif(gifUrl) {
-    setSending(true);
-    setShowGifPicker(false);
-
-    try {
-      await addDoc(collection(db, "posts", post.id, "comments"), {
-        authorId: user.uid,
-        authorName: user.displayName || user.email,
-        text: "",
-        isGif: true,
-        gifUrl,
-        createdAt: serverTimestamp(),
-        likesCount: 0,
-      });
-      updateDoc(doc(db, "posts", post.id), {
-        commentsCount: increment(1),
-      }).catch(() => {});
-    } catch (err) {
-      alertError("Failed to comment", err.message.replace("Firebase: ", "") || "Something went wrong.");
-    } finally {
-      setSending(false);
-    }
-  }
-
   async function handleLikeComment(comment) {
     const isLiked = likedComments[comment.id];
     const likeId = `${user.uid}_${comment.id}`;
@@ -164,15 +139,6 @@ export default function InlineComments({ post }) {
       });
     } catch {}
   }
-
-  const commentGifs = [
-    { url: "https://media.tenor.com/iMlPK0MXgqYAAAAM/wave-hello.gif", label: "Wave" },
-    { url: "https://media.tenor.com/1NixIQ8tzCsAAAAM/thumbs-up-thumbsup.gif", label: "Like" },
-    { url: "https://media.tenor.com/JJmHyMpMFJsAAAAM/love-you-heart.gif", label: "Love" },
-    { url: "https://media.tenor.com/Z1JgEOBMkjEAAAAM/fire-fire-emoji.gif", label: "Fire" },
-    { url: "https://media.tenor.com/TKktnMmkz5YAAAAM/laughing-lol.gif", label: "LOL" },
-    { url: "https://media.tenor.com/FfI0cMNYXr4AAAAM/clapping-clap.gif", label: "Clap" },
-  ];
 
   return (
     <div className="inline-comments">
@@ -217,27 +183,8 @@ export default function InlineComments({ post }) {
         </div>
       )}
 
-      {/* GIF Picker */}
-      {showGifPicker && (
-        <div className="inline-comments-gif-grid">
-          {commentGifs.map((gif) => (
-            <button key={gif.url} className="inline-gif-item" onClick={() => handleSendGif(gif.url)}>
-              <img src={gif.url} alt={gif.label} />
-            </button>
-          ))}
-        </div>
-      )}
-
       <RichTextToolbar textareaRef={inputRef} value={text} onChange={setText} />
       <form className="inline-comments-form" onSubmit={handleSend}>
-        <button
-          type="button"
-          className="comment-gif-btn"
-          onClick={() => setShowGifPicker(!showGifPicker)}
-          title="Add GIF"
-        >
-          <Image size={16} />
-        </button>
         <textarea
           ref={inputRef}
           placeholder="Write a comment... (supports **bold**, *italic*)"
