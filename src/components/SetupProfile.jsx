@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -122,7 +123,7 @@ export default function SetupProfile({ profile, onComplete }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={handleClose}>
       <form
         className="modal setup-profile-modal"
@@ -193,6 +194,7 @@ export default function SetupProfile({ profile, onComplete }) {
           )}
         </button>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 }
