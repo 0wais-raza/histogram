@@ -46,6 +46,7 @@ export default function CreatePost() {
   const trimAudioRef = useRef(null);
 
   const fileRef = useRef(null);
+  const previewUrlsRef = useRef([]);
   const captionRef = useRef(null);
 
   // Load music from manifest
@@ -57,7 +58,11 @@ export default function CreatePost() {
   }, []);
 
   useEffect(() => {
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      previewUrlsRef.current.forEach((p) => URL.revokeObjectURL(p));
+      previewUrlsRef.current = [];
+      document.body.style.overflow = "";
+    };
   }, []);
 
   function handleFileChange(e) {
@@ -80,13 +85,16 @@ export default function CreatePost() {
 
     if (valid.length) {
       setFiles((prev) => [...prev, ...valid]);
-      setPreviews((prev) => [...prev, ...valid.map((f) => URL.createObjectURL(f))]);
+      const newUrls = valid.map((f) => URL.createObjectURL(f));
+      previewUrlsRef.current.push(...newUrls);
+      setPreviews((prev) => [...prev, ...newUrls]);
     }
     if (fileRef.current) fileRef.current.value = "";
   }
 
   function removeImage(idx) {
     URL.revokeObjectURL(previews[idx]);
+    previewUrlsRef.current = previewUrlsRef.current.filter((_, i) => i !== idx);
     setFiles((prev) => prev.filter((_, i) => i !== idx));
     setPreviews((prev) => prev.filter((_, i) => i !== idx));
     // Always reset to first image on any deletion
