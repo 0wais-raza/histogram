@@ -37,9 +37,16 @@ service cloud.firestore {
     // ════════════════════════════════════════
     match /usernames/{username} {
       allow read: if true;
+      // Create: any authenticated user can reserve a username
       allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
+      // Update: only allow claiming — doc must be in "pending" state and the claimant must set uid to themselves
+      allow update: if request.auth != null
+                    && resource.data.status == "pending"
+                    && request.resource.data.uid == request.auth.uid;
+      // Delete: allow cleanup of pending usernames, or owner deleting their own
+      allow delete: if request.auth != null
+                    && (resource.data.status == "pending"
+                        || resource.data.uid == request.auth.uid);
     }
 
     // ════════════════════════════════════════
@@ -49,8 +56,10 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth != null
                     && request.auth.uid == request.resource.data.followerId;
+      // Allow either party to delete (unfollow or remove follower during account deletion)
       allow delete: if request.auth != null
-                    && request.auth.uid == resource.data.followerId;
+                    && (request.auth.uid == resource.data.followerId
+                        || request.auth.uid == resource.data.followingId);
       allow update: if false;
     }
 

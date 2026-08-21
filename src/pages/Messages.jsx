@@ -236,16 +236,6 @@ export default function Messages() {
     const unsub = onSnapshot(q, (snap) => {
       const msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setChatMessages(msgs);
-      // Clear pending states for messages that now exist in Firestore
-      setPendingIds((prev) => {
-        if (prev.size === 0) return prev;
-        const next = new Set();
-        for (const pid of prev) {
-          const stillPending = !msgs.some((m) => m.text === pid.split("||")[1] && m.senderId === user.uid);
-          if (stillPending) next.add(pid);
-        }
-        return next;
-      });
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     }, (err) => {
       console.error("Messages listener error:", err);
@@ -364,6 +354,7 @@ export default function Messages() {
       alertError("No internet", "You appear to be offline. Please check your connection and try again.");
       return;
     }
+    setSending(true);
 
     // Generate a temporary ID for optimistic UI
     const tempId = "temp_" + Date.now() + "||" + (text || "gif");
@@ -443,6 +434,7 @@ export default function Messages() {
       setFailedIds((prev) => new Set([...prev, tempId]));
       alertError("Message failed", friendlyError(err));
     } finally {
+      setSending(false);
       chatInputRef.current?.focus();
     }
   }
@@ -455,7 +447,7 @@ export default function Messages() {
     });
     setPendingIds((prev) => new Set([...prev, failedTempId]));
     setChatMessages((prev) =>
-      prev.map((m) => m.id === failedTempId ? { ...m, pending: true } : m)
+      prev.map((m) => m.id === failedTempId ? { ...m, pending: true, failed: false } : m)
     );
     try {
       const chatId = [user.uid, activeChat.uid].sort().join("_");
@@ -473,6 +465,8 @@ export default function Messages() {
       }
       await batch.commit();
       await addDoc(collection(db, "chats", chatId, "messages"), { senderId: user.uid, text: text || "", isGif, gifUrl: isGif ? text : "", createdAt: serverTimestamp(), read: false });
+      // Remove the old optimistic message — onSnapshot will add the real one
+      setChatMessages((prev) => prev.filter((m) => m.id !== failedTempId));
       setPendingIds((prev) => { const next = new Set(prev); next.delete(failedTempId); return next; });
     } catch (err) {
       setPendingIds((prev) => { const next = new Set(prev); next.delete(failedTempId); return next; });

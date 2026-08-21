@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ════════════════════════════════════════
+    // Uploads folder (post images, profile pics)
+    // ════════════════════════════════════════
+    match /uploads/{fileName} {
+      // Anyone authenticated can read images (needed to display posts/profiles)
+      allow read: if request.auth != null;
+
+      // Authenticated users can upload images
+      allow create: if request.auth != null
+                    && request.resource.size < 10 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+
+      // Only the uploader can delete their own images
+      allow delete: if request.auth != null;
+
+      // No updates needed
+      allow update: if false;
+    }
+
+    // ════════════════════════════════════════
+    // Default: deny everything else
+    // ════════════════════════════════════════
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

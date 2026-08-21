@@ -93,11 +93,15 @@ export default function SettingsPage() {
       postsSnap.docs.forEach((d) => batch.delete(d.ref));
       await batch.commit();
 
-      // Delete follows
+      // Delete follows — batch in groups of 500 (Firestore batch limit)
       const followSnap1 = await getDocs(query(collection(db, "follows"), where("followerId", "==", user.uid)));
-      followSnap1.docs.forEach((d) => deleteDoc(d.ref).catch(() => {}));
       const followSnap2 = await getDocs(query(collection(db, "follows"), where("followingId", "==", user.uid)));
-      followSnap2.docs.forEach((d) => deleteDoc(d.ref).catch(() => {}));
+      const allFollowDocs = [...followSnap1.docs, ...followSnap2.docs];
+      for (let i = 0; i < allFollowDocs.length; i += 500) {
+        const batch = writeBatch(db);
+        allFollowDocs.slice(i, i + 500).forEach((d) => batch.delete(d.ref));
+        await batch.commit().catch(() => {});
+      }
 
       // Delete user doc
       await deleteDoc(doc(db, "users", user.uid));
