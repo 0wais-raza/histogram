@@ -40,28 +40,42 @@ export default function Notifications() {
 
     const unsubFollowers = onSnapshot(followsQ, async (followersSnap) => {
       const notifs = [];
+      const userCache = new Map(); // Cache user data to avoid duplicate fetches
 
-      for (const d of followersSnap.docs) {
-        const data = d.data();
+      // Helper to fetch user data with caching
+      async function getCachedUser(uid) {
+        if (userCache.has(uid)) return userCache.get(uid);
         try {
-          const userSnap = await getDoc(doc(db, "users", data.followerId));
-          if (userSnap.exists()) {
-            const u = userSnap.data();
-            notifs.push({
-              id: d.id,
-              type: "follow",
-              userId: data.followerId,
-              username: u.username,
-              profilePic: u.profilePic,
-              createdAt: data.createdAt,
-              text: "started following you",
-            });
+          const snap = await getDoc(doc(db, "users", uid));
+          if (snap.exists()) {
+            const data = snap.data();
+            userCache.set(uid, data);
+            return data;
           }
         } catch {}
+        return null;
       }
 
-      // ── Likes on YOUR posts ──
+      // ── Follow notifications (real-time via onSnapshot) ──
+      for (const d of followersSnap.docs) {
+        const data = d.data();
+        const userData = await getCachedUser(data.followerId);
+        if (userData) {
+          notifs.push({
+            id: d.id,
+            type: "follow",
+            userId: data.followerId,
+            username: userData.username,
+            profilePic: userData.profilePic,
+            createdAt: data.createdAt,
+            text: "started following you",
+          });
+        }
+      }
+
+      // ── Likes & Comments on YOUR posts ──
       try {
+        // Fetch user's posts once
         const myPostsQ = query(
           collection(db, "posts"),
           where("authorId", "==", user.uid),
@@ -69,118 +83,112 @@ export default function Notifications() {
           limit(10)
         );
         const myPostsSnap = await getDocs(myPostsQ);
-        for (const pDoc of myPostsSnap.docs) {
-          const postData = pDoc.data();
-          // Get likes on this post
-          const likesQ = query(
-            collection(db, "postLikes"),
-            where("postId", "==", pDoc.id),
-            orderBy("createdAt", "desc"),
-            limit(5)
-          );
-          const likesSnap = await getDocs(likesQ);
-          for (const likeDoc of likesSnap.docs) {
+        const myPosts = myPostsSnap.docs;
+
+        // Batch: get likes for all posts in parallel
+        const likePromises = myPosts.map((pDoc) =>
+          getDocs(query(collection(db, "postLikes"), where("postId", "==", pDoc.id), orderBy("createdAt", "desc"), limit(5)))
+            .then((snap) => ({ postId: pDoc.id, likes: snap.docs }))
+            .catch(() => ({ postId: pDoc.id, likes: [] }))
+        );
+
+        // Batch: get comments for all posts in parallel
+        const commentPromises = myPosts.map((pDoc) =>
+          getDocs(query(collection(db, "posts", pDoc.id, "comments"), orderBy("createdAt", "desc"), limit(5)))
+            .then((snap) => ({ postId: pDoc.id, comments: snap.docs }))
+            .catch(() => ({ postId: pDoc.id, comments: [] }))
+        );
+
+        const [likeResults, commentResults] = await Promise.all([
+          Promise.all(likePromises),
+          Promise.all(commentPromises),
+        ]);
+
+        // Process likes
+        for (const { postId, likes } of likeResults) {
+          for (const likeDoc of likes) {
             const likeData = likeDoc.data();
             if (likeData.userId === user.uid) continue;
-            try {
-              const likerSnap = await getDoc(doc(db, "users", likeData.userId));
-              if (likerSnap.exists()) {
-                const u = likerSnap.data();
-                notifs.push({
-                  id: likeDoc.id,
-                  type: "like",
-                  userId: likeData.userId,
-                  username: u.username,
-                  profilePic: u.profilePic,
-                  createdAt: likeData.createdAt,
-                  text: "liked your post",
-                  postId: pDoc.id,
-                });
-              }
-            } catch {}
+            const userData = await getCachedUser(likeData.userId);
+            if (userData) {
+              notifs.push({
+                id: likeDoc.id,
+                type: "like",
+                userId: likeData.userId,
+                username: userData.username,
+                profilePic: userData.profilePic,
+                createdAt: likeData.createdAt,
+                text: "liked your post",
+                postId,
+              });
+            }
           }
         }
-      } catch {}
 
-      // ── Comments on YOUR posts ──
-      try {
-        const myPostsQ2 = query(
-          collection(db, "posts"),
-          where("authorId", "==", user.uid),
-          orderBy("createdAt", "desc"),
-          limit(10)
-        );
-        const myPostsSnap2 = await getDocs(myPostsQ2);
-        for (const pDoc of myPostsSnap2.docs) {
-          const commentsQ = query(
-            collection(db, "posts", pDoc.id, "comments"),
-            orderBy("createdAt", "desc"),
-            limit(5)
-          );
-          const commentsSnap = await getDocs(commentsQ);
-          for (const cDoc of commentsSnap.docs) {
+        // Process comments
+        for (const { postId, comments } of commentResults) {
+          for (const cDoc of comments) {
             const cData = cDoc.data();
             if (cData.authorId === user.uid) continue;
-            try {
-              const commenterSnap = await getDoc(doc(db, "users", cData.authorId));
-              if (commenterSnap.exists()) {
-                const u = commenterSnap.data();
-                notifs.push({
-                  id: "comment_" + cDoc.id,
-                  type: "comment",
-                  userId: cData.authorId,
-                  username: u.username,
-                  profilePic: u.profilePic,
-                  createdAt: cData.createdAt,
-                  text: "commented on your post",
-                  postId: pDoc.id,
-                });
-              }
-            } catch {}
+            const userData = await getCachedUser(cData.authorId);
+            if (userData) {
+              notifs.push({
+                id: "comment_" + cDoc.id,
+                type: "comment",
+                userId: cData.authorId,
+                username: userData.username,
+                profilePic: userData.profilePic,
+                createdAt: cData.createdAt,
+                text: "commented on your post",
+                postId,
+              });
+            }
           }
         }
       } catch {}
 
-      // Also check posts from people we follow (for general activity)
-      const followingQ = query(
-        collection(db, "follows"),
-        where("followerId", "==", user.uid),
-        orderBy("createdAt", "desc"),
-        limit(20)
-      );
-      const followingSnap = await getDocs(followingQ);
-      const followingUids = followingSnap.docs.map((d) => d.data().followingId);
-
-      if (followingUids.length > 0) {
-        const postsQ = query(
-          collection(db, "posts"),
-          where("authorId", "in", followingUids.slice(0, 10)),
+      // ── New posts from people we follow ──
+      try {
+        const followingQ = query(
+          collection(db, "follows"),
+          where("followerId", "==", user.uid),
           orderBy("createdAt", "desc"),
-          limit(10)
+          limit(20)
         );
-        const postsSnap = await getDocs(postsQ);
-        for (const p of postsSnap.docs) {
-          const pData = p.data();
-          if (pData.likesCount > 0) {
-            try {
-              const authorSnap = await getDoc(doc(db, "users", pData.authorId));
-              if (authorSnap.exists()) {
-                const a = authorSnap.data();
+        const followingSnap = await getDocs(followingQ);
+        const followingUids = followingSnap.docs.map((d) => d.data().followingId);
+
+        if (followingUids.length > 0) {
+          // Firestore `in` query limit is 10
+          const allPosts = [];
+          for (let i = 0; i < Math.min(followingUids.length, 10); i += 10) {
+            const batch = followingUids.slice(i, i + 10);
+            const postsSnap = await getDocs(
+              query(collection(db, "posts"), where("authorId", "in", batch), orderBy("createdAt", "desc"), limit(10))
+            );
+            allPosts.push(...postsSnap.docs);
+          }
+
+          for (const p of allPosts) {
+            const pData = p.data();
+            if (pData.likesCount > 0) {
+              const authorData = await getCachedUser(pData.authorId);
+              if (authorData) {
                 notifs.push({
                   id: "newpost_" + p.id,
                   type: "new_post",
                   userId: pData.authorId,
-                  username: a.username,
-                  profilePic: a.profilePic,
+                  username: authorData.username,
+                  profilePic: authorData.profilePic,
                   createdAt: pData.createdAt,
                   text: "shared a new post",
                   postId: p.id,
                 });
               }
-            } catch {}
+            }
           }
         }
-      }
+      } catch {}
 
       notifs.sort((a, b) => {
         const ta = a.createdAt?.seconds || 0;

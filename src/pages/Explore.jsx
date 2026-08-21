@@ -42,21 +42,14 @@ export default function Explore() {
         const filteredUsers = validUsers.filter((u) => u.uid !== user?.uid);
         setUsers(filteredUsers);
 
-        // Batch-fetch follower counts
-        const counts = {};
-        for (const u of filteredUsers) {
-          try {
-            const followerQ = query(
-              collection(db, "follows"),
-              where("followingId", "==", u.uid),
-              limit(1000)
-            );
-            const followerSnap = await getDocs(followerQ);
-            counts[u.uid] = followerSnap.size;
-          } catch {
-            counts[u.uid] = u.followersCount || 0;
-          }
-        }
+        // Batch-fetch follower counts (parallel)
+        const countPromises = filteredUsers.map((u) =>
+          getDocs(query(collection(db, "follows"), where("followingId", "==", u.uid), limit(1000)))
+            .then((snap) => [u.uid, snap.size])
+            .catch(() => [u.uid, u.followersCount || 0])
+        );
+        const countResults = await Promise.all(countPromises);
+        const counts = Object.fromEntries(countResults);
         setFollowerCounts(counts);
       } catch {
         // silent

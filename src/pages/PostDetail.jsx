@@ -13,8 +13,9 @@ import FormattedText from "../components/FormattedText";
 import { FeedSkeleton } from "../components/LoadingSkeleton";
 import {
   ArrowLeft, Heart, Bookmark, MessageCircle, Send, Music, Volume2, VolumeX,
-  ChevronLeft, ChevronRight, ExternalLink,
+  ChevronLeft, ChevronRight, ExternalLink, Copy, Link2,
 } from "lucide-react";
+import { alertSuccess } from "../utils/alerts";
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -253,6 +254,18 @@ export default function PostDetail() {
           <button className={`feed-post-action-btn ${showComments ? "active" : ""}`} onClick={() => setShowComments((p) => !p)}>
             <MessageCircle size={20} />
             {post.commentsCount > 0 && <span>{post.commentsCount}</span>}
+          </button>
+          <button className="feed-post-action-btn" onClick={() => {
+            const url = `${window.location.origin}/post/${post.id}`;
+            if (navigator.share) {
+              navigator.share({ title: "Check out this post", url }).catch(() => {});
+            } else {
+              navigator.clipboard.writeText(url).then(() => {
+                alertSuccess("Copied!", "Link copied to clipboard.");
+              }).catch(() => {});
+            }
+          }} title="Share">
+            <Send size={20} />
           </button>
           <button className={`feed-post-action-btn ${saved ? "saved" : ""}`} onClick={handleSave}>
             <Bookmark size={20} fill={saved ? "var(--cyan)" : "none"} />

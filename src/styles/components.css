@@ -623,8 +623,6 @@
 /* Prevent background scroll when any modal is open */
 body.modal-open {
   overflow: hidden !important;
-  position: fixed;
-  width: 100%;
 }
 
 @keyframes modalBackdropIn {

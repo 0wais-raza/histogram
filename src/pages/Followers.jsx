@@ -37,21 +37,27 @@ export default function Followers() {
       const uids = snap.docs.map((d) => d.data()[resultField]);
       const userData = [];
 
-      for (const id of uids) {
-        let data;
-        const cached = localStorage.getItem(`author_${id}`);
-        if (cached) {
-          data = JSON.parse(cached);
-        } else {
-          try {
-            const userSnap = await getDoc(doc(db, "users", id));
-            if (userSnap.exists()) {
-              data = { uid: id, ...userSnap.data() };
-            }
-          } catch {}
-        }
-        if (data) userData.push(data);
+      // Batch-fetch user data in parallel
+      const userPromises = uids.map(async (id) => {
+        try {
+          const cached = localStorage.getItem(`author_${id}`);
+          if (cached) return JSON.parse(cached);
+          const userSnap = await getDoc(doc(db, "users", id));
+          if (userSnap.exists()) {
+            const data = { uid: id, ...userSnap.data() };
+            return data;
+          }
+        } catch {}
+        return null;
+      });
 
+      const results = await Promise.all(userPromises);
+      for (const data of results) {
+        if (data) userData.push(data);
+      }
+
+      // Subscribe to follow state for each user
+      for (const id of uids) {
         if (user && id !== user.uid && !followUnsubRef.current.has(id)) {
           const fUnsub = onSnapshot(doc(db, "follows", `${user.uid}_${id}`), (followSnap) => {
             setFollowingState((prev) => ({ ...prev, [id]: followSnap.exists() }));

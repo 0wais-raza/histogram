@@ -72,25 +72,36 @@ export default function Home() {
     return () => document.body.classList.remove("modal-open");
   }, [sharePost]);
 
-  // ── Author data fetcher ──
+  // ── Author data fetcher (batch parallel) ──
   async function loadAuthorData(postList) {
     const uids = [...new Set(postList.map((p) => p.authorId).filter(Boolean))];
     const data = {};
-    for (const uid of uids) {
-      try {
-        const cacheKey = `pic_${uid}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          data[uid] = { profilePic: cached, username: "" };
-        }
-        const snap = await getDoc(doc(db, "users", uid));
-        if (snap.exists()) {
-          const d = snap.data();
-          data[uid] = { profilePic: d.profilePic || "", username: d.username || "" };
-          if (d.profilePic) localStorage.setItem(cacheKey, d.profilePic);
-        }
-      } catch {}
+    const uncachedUids = uids.filter((uid) => !localStorage.getItem(`pic_${uid}`));
+
+    // Set cached data immediately
+    uids.forEach((uid) => {
+      const cached = localStorage.getItem(`pic_${uid}`);
+      if (cached) data[uid] = { profilePic: cached, username: "" };
+    });
+
+    // Batch-fetch uncached user data in parallel
+    if (uncachedUids.length > 0) {
+      const userPromises = uncachedUids.map(async (uid) => {
+        try {
+          const snap = await getDoc(doc(db, "users", uid));
+          if (snap.exists()) {
+            const d = snap.data();
+            if (d.profilePic) localStorage.setItem(`pic_${uid}`, d.profilePic);
+            return [uid, { profilePic: d.profilePic || "", username: d.username || "" }];
+          }
+        } catch {}
+        return null;
+      });
+
+      const results = await Promise.all(userPromises);
+      results.forEach((r) => { if (r) data[r[0]] = r[1]; });
     }
+
     if (Object.keys(data).length) setAuthorData((prev) => ({ ...prev, ...data }));
   }
 
@@ -153,10 +164,14 @@ export default function Home() {
       }
 
       if (fetched.length > 0) {
-        const postIds = fetched.map((p) => p.id);
-        const savedSnap = await getDocs(query(collection(db, "postSaves"), where("postId", "in", postIds), where("userId", "==", user.uid)));
         const saved = {};
-        savedSnap.docs.forEach((d) => { saved[d.data().postId] = true; });
+        const postIds = fetched.map((p) => p.id);
+        // Firestore `in` query limit is 10 items
+        for (let i = 0; i < postIds.length; i += 10) {
+          const batch = postIds.slice(i, i + 10);
+          const savedSnap = await getDocs(query(collection(db, "postSaves"), where("postId", "in", batch), where("userId", "==", user.uid)));
+          savedSnap.docs.forEach((d) => { saved[d.data().postId] = true; });
+        }
         setSavedPosts(saved);
       }
     }, () => { setLoadingPosts(false); });
@@ -193,10 +208,14 @@ export default function Home() {
     try {
       if (isLiked) {
         deleteDoc(doc(db, "postLikes", `${user.uid}_${post.id}`));
-        updateDoc(doc(db, "posts", post.id), { likesCount: increment(-1) }).catch(() => {});
+        updateDoc(doc(db, "posts", post.id), { likesCount: increment(-1) }).catch(() => {
+          setLikeCounts((prev) => ({ ...prev, [post.id]: (prev[post.id] || 0) + 1 }));
+        });
       } else {
         setDoc(doc(db, "postLikes", `${user.uid}_${post.id}`), { postId: post.id, userId: user.uid, createdAt: serverTimestamp() });
-        updateDoc(doc(db, "posts", post.id), { likesCount: increment(1) }).catch(() => {});
+        updateDoc(doc(db, "posts", post.id), { likesCount: increment(1) }).catch(() => {
+          setLikeCounts((prev) => ({ ...prev, [post.id]: Math.max(0, (prev[post.id] || 1) - 1) }));
+        });
       }
     } catch {}
   }
@@ -301,12 +320,13 @@ export default function Home() {
       await batch.commit();
       await addDoc(collection(db, "chats", chatId, "messages"), { senderId: user.uid, text: shareText, isGif: false, gifUrl: "", sharePreview, createdAt: serverTimestamp(), read: false });
 
-      // Show sent confirmation then close
+      // Show success toast then close
+      alertSuccess("Sent!", `Shared with @${contact.username}`);
       setTimeout(() => {
         setSentTo(null);
         setSharePost(null);
         setShareContacts([]);
-      }, 800);
+      }, 400);
     } catch (err) {
       setSentTo(null);
       alertError("Failed", "Could not send. Please try again.");
@@ -335,8 +355,10 @@ export default function Home() {
 
   async function handleDeletePost(post) {
     if (!(await alertConfirm("Delete post?", "This action cannot be undone."))) return;
-    try { await deleteDoc(doc(db, "posts", post.id)); }
-    catch (err) { alertError("Delete failed", err.message); }
+    try {
+      await deleteDoc(doc(db, "posts", post.id));
+      alertSuccess("Deleted", "Your post has been removed.");
+    } catch (err) { alertError("Delete failed", err.message); }
   }
 
   async function handleEditCaption(post) {

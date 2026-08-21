@@ -156,8 +156,11 @@ export default function Profile() {
 
   async function handleDeletePost(post) {
     if (!(await alertConfirm("Delete post?", "This action cannot be undone."))) return;
-    try { await deleteDoc(doc(db, "posts", post.id)); }
-    catch (err) { alertError("Delete failed", err.message); }
+    try {
+      await deleteDoc(doc(db, "posts", post.id));
+      // Close modal if the deleted post is currently shown
+      if (selectedPost?.id === post.id) setSelectedPost(null);
+    } catch (err) { alertError("Delete failed", err.message); }
   }
 
   function handleLikePost(post) {
@@ -179,15 +182,17 @@ export default function Profile() {
 
   async function handleSavePost(post) {
     const isSaved = savedPosts[post.id];
+    // Optimistic UI
+    setSavedPosts((prev) => ({ ...prev, [post.id]: !isSaved }));
     try {
       if (isSaved) {
         await deleteDoc(doc(db, "postSaves", `${user.uid}_${post.id}`));
-        setSavedPosts((prev) => ({ ...prev, [post.id]: false }));
       } else {
-        await setDoc(doc(db, "postSaves", `${user.uid}_${post.id}`), { postId: post.id, userId: user.uid, createdAt: new Date().toISOString() });
-        setSavedPosts((prev) => ({ ...prev, [post.id]: true }));
+        await setDoc(doc(db, "postSaves", `${user.uid}_${post.id}`), { postId: post.id, userId: user.uid, createdAt: serverTimestamp() });
       }
-    } catch {}
+    } catch {
+      setSavedPosts((prev) => ({ ...prev, [post.id]: isSaved })); // revert on failure
+    }
   }
 
   function toggleMute(postId) {

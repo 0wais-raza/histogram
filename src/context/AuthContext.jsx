@@ -19,6 +19,7 @@ import {
   serverTimestamp,
   getDoc,
   increment,
+  writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "../firebase/config";
 
@@ -246,20 +247,24 @@ export function AuthProvider({ children }) {
     const snap = await getDoc(followRef);
 
     if (snap.exists()) {
-      // Unfollow
-      await deleteDoc(followRef);
-      await setDoc(doc(db, "users", targetUid), { followersCount: increment(-1) }, { merge: true });
-      await setDoc(doc(db, "users", user.uid), { followingCount: increment(-1) }, { merge: true });
+      // Unfollow — use batch for atomicity
+      const batch = writeBatch(db);
+      batch.delete(followRef);
+      batch.update(doc(db, "users", targetUid), { followersCount: increment(-1) });
+      batch.update(doc(db, "users", user.uid), { followingCount: increment(-1) });
+      await batch.commit();
       return false;
     } else {
-      // Follow
-      await setDoc(followRef, {
+      // Follow — use batch for atomicity
+      const batch = writeBatch(db);
+      batch.set(followRef, {
         followerId: user.uid,
         followingId: targetUid,
         createdAt: serverTimestamp(),
       });
-      await setDoc(doc(db, "users", targetUid), { followersCount: increment(1) }, { merge: true });
-      await setDoc(doc(db, "users", user.uid), { followingCount: increment(1) }, { merge: true });
+      batch.update(doc(db, "users", targetUid), { followersCount: increment(1) });
+      batch.update(doc(db, "users", user.uid), { followingCount: increment(1) });
+      await batch.commit();
       return true;
     }
   }

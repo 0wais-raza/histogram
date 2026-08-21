@@ -115,6 +115,7 @@ export default function InlineComments({ post }) {
     const isLiked = likedComments[comment.id];
     const likeId = `${user.uid}_${comment.id}`;
 
+    // Optimistic UI update
     setCommentLikeCounts((prev) => ({
       ...prev,
       [comment.id]: isLiked ? Math.max(0, (prev[comment.id] || 1) - 1) : (prev[comment.id] || 0) + 1,
@@ -123,10 +124,14 @@ export default function InlineComments({ post }) {
     try {
       if (isLiked) {
         deleteDoc(doc(db, "commentLikes", likeId));
-        updateDoc(doc(db, "posts", post.id, "comments", comment.id), { likesCount: increment(-1) }).catch(() => {});
+        updateDoc(doc(db, "posts", post.id, "comments", comment.id), { likesCount: increment(-1) }).catch(() => {
+          setCommentLikeCounts((prev) => ({ ...prev, [comment.id]: (prev[comment.id] || 0) + 1 }));
+        });
       } else {
         setDoc(doc(db, "commentLikes", likeId), { commentId: comment.id, userId: user.uid, createdAt: serverTimestamp() });
-        updateDoc(doc(db, "posts", post.id, "comments", comment.id), { likesCount: increment(1) }).catch(() => {});
+        updateDoc(doc(db, "posts", post.id, "comments", comment.id), { likesCount: increment(1) }).catch(() => {
+          setCommentLikeCounts((prev) => ({ ...prev, [comment.id]: Math.max(0, (prev[comment.id] || 1) - 1) }));
+        });
       }
     } catch {}
   }
@@ -137,7 +142,9 @@ export default function InlineComments({ post }) {
       await updateDoc(doc(db, "posts", post.id), {
         commentsCount: increment(-1),
       });
-    } catch {}
+    } catch (err) {
+      alertError("Delete failed", err.message.replace("Firebase: ", "") || "Something went wrong.");
+    }
   }
 
   return (
